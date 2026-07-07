@@ -1,0 +1,62 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Derive version
+        id: ver
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        run: docker build -t aurafile:${{ steps.ver.outputs.version }} .
+
+      - name: Export image to tar
+        run: docker save aurafile:${{ steps.ver.outputs.version }} -o aurafile-image.tar
+
+      - name: Package fpk
+        run: |
+          mkdir -p dist
+          cp fpk.json dist/
+          cp aurafile-image.tar dist/
+          cp README.md dist/ 2>/dev/null || true
+          cd dist && zip -r ../aurafile.fpk . && cd ..
+
+      - name: Generate latest.json
+        run: |
+          cat > latest.json <<EOF
+          {
+            "version": "${{ steps.ver.outputs.version }}",
+            "name": "Aurafile",
+            "fpk": "aurafile.fpk",
+            "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "notes": "https://github.com/planover/aurafile/releases/tag/${{ github.ref_name }}"
+          }
+          EOF
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            aurafile.fpk
+            latest.json
+          name: Aurafile ${{ steps.ver.outputs.version }}
+          body: |
+            Aurafile v${{ steps.ver.outputs.version }} — 梦幻柔和的离线 NAS 文件管理器
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,15 @@
+node_modules
+npm-debug.log
+.git
+.gitignore
+*.db
+*.db-wal
+*.db-shm
+.config/aurafile
+.aurafile-data
+deliverables
+Dockerfile
+.dockerignore
+.github
+README.md
+fpk.json

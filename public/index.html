@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aurafile · 梦幻文件管理器</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <!-- 完全离线：无任何外部字体/CDN/遥测请求 -->
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-aura"></span>
+        <span class="brand-name">Aurafile</span>
+      </div>
+
+      <div class="searchbox">
+        <input id="searchInput" type="search" placeholder="搜索文件名或文件内容…" autocomplete="off" />
+        <button id="filterBtn" class="icon-btn" title="筛选">⚙</button>
+      </div>
+
+      <div class="top-actions">
+        <button id="undoBtn" class="icon-btn" title="撤销 (Ctrl+Z)">↶</button>
+        <button id="redoBtn" class="icon-btn" title="重做 (Ctrl+Y)">↷</button>
+        <button id="aboutBtn" class="icon-btn" title="关于">ℹ</button>
+      </div>
+    </header>
+
+    <section class="toolbar" id="toolbar" hidden>
+      <span id="selCount" class="sel-count">已选 0 项</span>
+      <button data-act="rename">重命名</button>
+      <button data-act="copy">复制</button>
+      <button data-act="cut">剪切</button>
+      <button data-act="paste">粘贴</button>
+      <button data-act="trash" class="danger">删除至回收站</button>
+      <button data-act="delete" class="danger-strong">彻底删除</button>
+      <button data-act="archive">压缩</button>
+      <button data-act="extract">解压</button>
+      <button data-act="convert">转换</button>
+      <button data-act="details">详情</button>
+    </section>
+
+    <main id="timeline" class="timeline"></main>
+
+    <aside id="detail" class="detail-panel" hidden>
+      <button class="detail-close" id="detailClose">×</button>
+      <div id="detailBody"></div>
+    </aside>
+
+    <div id="toast" class="toast" hidden></div>
+
+    <!-- 筛选弹层 -->
+    <div id="filterModal" class="modal" hidden>
+      <div class="modal-card">
+        <h3>筛选</h3>
+        <label>类型
+          <select id="fType">
+            <option value="all">全部</option>
+            <option value="image">图片</option>
+            <option value="video">视频</option>
+            <option value="doc">文档</option>
+            <option value="audio">音频</option>
+            <option value="archive">压缩包</option>
+            <option value="other">其他</option>
+          </select>
+        </label>
+        <label>最小大小 (MB)<input id="fMin" type="number" min="0" step="1" /></label>
+        <label>最大大小 (MB)<input id="fMax" type="number" min="0" step="1" /></label>
+        <label>起始日期<input id="fFrom" type="date" /></label>
+        <label>结束日期<input id="fTo" type="date" /></label>
+        <div class="modal-actions">
+          <button id="filterApply">应用</button>
+          <button id="filterReset" class="ghost">重置</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 通用输入弹层（重命名/压缩名/转换） -->
+    <div id="promptModal" class="modal" hidden>
+      <div class="modal-card">
+        <h3 id="promptTitle">输入</h3>
+        <input id="promptInput" type="text" />
+        <div class="modal-actions">
+          <button id="promptOk">确定</button>
+          <button id="promptCancel" class="ghost">取消</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 关于页 -->
+    <div id="aboutModal" class="modal" hidden>
+      <div class="modal-card about">
+        <span class="about-aura"></span>
+        <h2>Aurafile</h2>
+        <p class="about-tag">梦幻柔和的离线 NAS 文件管理器</p>
+        <p class="about-ver" id="aboutVer"></p>
+        <p>一个完全离线运行、无任何联网请求或外部 API 调用的文件管理应用，
+           专为飞牛 NAS（fnOS）fpk 窗口打造。</p>
+        <p>作者 GitHub：<a id="aboutGithub" href="#" target="_blank" rel="noopener">github.com/planover/aurafile</a></p>
+        <div class="about-qr">
+          <p>赞赏作者：</p>
+          <img id="aboutQr" src="/about-qr.svg" alt="赞赏码" />
+        </div>
+        <div class="modal-actions">
+          <button id="aboutClose" class="ghost">关闭</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="赞赏码占位">
+  <rect width="180" height="180" rx="16" fill="#ffffff"/>
+  <g fill="#3a3357">
+    <!-- 三个定位角 -->
+    <rect x="14" y="14" width="36" height="36" rx="4"/>
+    <rect x="22" y="22" width="20" height="20" rx="2" fill="#ffffff"/>
+    <rect x="28" y="28" width="8" height="8" fill="#3a3357"/>
+    <rect x="130" y="14" width="36" height="36" rx="4"/>
+    <rect x="138" y="22" width="20" height="20" rx="2" fill="#ffffff"/>
+    <rect x="144" y="28" width="8" height="8" fill="#3a3357"/>
+    <rect x="14" y="130" width="36" height="36" rx="4"/>
+    <rect x="22" y="138" width="20" height="20" rx="2" fill="#ffffff"/>
+    <rect x="28" y="144" width="8" height="8" fill="#3a3357"/>
+    <!-- 模拟码点 -->
+    <rect x="60" y="18" width="8" height="8"/><rect x="76" y="18" width="8" height="8"/>
+    <rect x="60" y="34" width="8" height="8"/><rect x="92" y="34" width="8" height="8"/>
+    <rect x="108" y="18" width="8" height="8"/><rect x="108" y="40" width="8" height="8"/>
+    <rect x="18" y="60" width="8" height="8"/><rect x="40" y="60" width="8" height="8"/>
+    <rect x="60" y="60" width="8" height="8"/><rect x="84" y="60" width="8" height="8"/>
+    <rect x="108" y="60" width="8" height="8"/><rect x="132" y="60" width="8" height="8"/>
+    <rect x="156" y="60" width="8" height="8"/>
+    <rect x="60" y="84" width="8" height="8"/><rect x="84" y="84" width="8" height="8"/>
+    <rect x="132" y="84" width="8" height="8"/><rect x="156" y="84" width="8" height="8"/>
+    <rect x="18" y="108" width="8" height="8"/><rect x="60" y="108" width="8" height="8"/>
+    <rect x="108" y="108" width="8" height="8"/><rect x="156" y="108" width="8" height="8"/>
+    <rect x="60" y="132" width="8" height="8"/><rect x="84" y="132" width="8" height="8"/>
+    <rect x="108" y="132" width="8" height="8"/><rect x="132" y="132" width="8" height="8"/>
+    <rect x="156" y="132" width="8" height="8"/><rect x="60" y="156" width="8" height="8"/>
+    <rect x="108" y="156" width="8" height="8"/><rect x="156" y="156" width="8" height="8"/>
+  </g>
+  <text x="90" y="100" font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="11" fill="#8b6dff" text-anchor="middle">赞赏码占位</text>
+  <text x="90" y="118" font-family="-apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif" font-size="9" fill="#6f6790" text-anchor="middle">请替换为你的二维码</text>
+</svg>

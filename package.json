@@ -1,0 +1,27 @@
+{
+  "name": "aurafile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Aurafile — 梦幻柔和的离线 NAS 文件管理器（Docker / fnOS fpk）",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "smoke": "node scripts/smoke.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "archiver": "^7.0.1",
+    "better-sqlite3": "^11.3.0",
+    "chokidar": "^4.0.1",
+    "exifr": "^7.1.3",
+    "express": "^4.21.0",
+    "fs-extra": "^11.2.0",
+    "tar": "^7.4.3",
+    "yauzl": "^3.1.3"
+  },
+  "optionalDependencies": {
+    "sharp": "^0.33.5"
+  }
+}

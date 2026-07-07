@@ -1,0 +1,42 @@
+{
+  "id": "aurafile",
+  "name": "Aurafile",
+  "version": "0.1.0",
+  "tagline": "梦幻柔和的离线 NAS 文件管理器",
+  "description": "基于 Docker 的离线文件管理器，支持时间轴浏览、全文搜索、缩略图、EXIF、压缩解压与格式转换。完全离线运行，无任何联网请求或外部 API。",
+  "icon": "icon.png",
+  "category": "工具",
+  "offline": true,
+  "minFnosVersion": "0.1.0",
+  "author": {
+    "name": "planover",
+    "github": "https://github.com/planover/aurafile"
+  },
+  "supportedArch": ["x86_64", "arm64"],
+  "window": {
+    "port": 8080,
+    "entry": "http://localhost:8080",
+    "title": "Aurafile",
+    "width": 1280,
+    "height": 800
+  },
+  "container": {
+    "image": "ghcr.io/planover/aurafile:latest",
+    "ports": [{ "container": 8080, "host": 8080, "protocol": "tcp" }],
+    "volumes": [
+      { "name": "data", "hostPath": "/你的NAS数据目录", "containerPath": "/data", "description": "要管理的文件根目录" },
+      { "name": "config", "hostPath": "/配置文件目录", "containerPath": "/config", "description": "索引库/回收站/缩略图缓存" }
+    ],
+    "environment": [
+      { "name": "AURAFILE_ROOT", "value": "/data", "description": "管理的文件根目录" },
+      { "name": "AURAFILE_DATA", "value": "/config/aurafile", "description": "应用数据目录" },
+      { "name": "PORT", "value": "8080" },
+      { "name": "AURAFILE_UID", "value": "", "description": "可选：映射文件属主 UID" },
+      { "name": "AURAFILE_GID", "value": "", "description": "可选：映射文件属主 GID" }
+    ]
+  },
+  "permissions": {
+    "network": "none",
+    "note": "应用全程不发起任何网络连接；更新由 fnOS/fpk 机制从 Release 拉取，而非应用自身请求。"
+  }
+}
