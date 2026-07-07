@@ -1,4 +1,4 @@
-# Aurafile
+# Aurafile（光匣）
 
 > 梦幻柔和的离线 NAS 文件管理器 · 为飞牛 NAS（fnOS）fpk 窗口打造
 

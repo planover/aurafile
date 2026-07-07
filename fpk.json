@@ -1,6 +1,6 @@
 {
   "id": "aurafile",
-  "name": "Aurafile",
+  "name": "光匣",
   "version": "0.1.0",
   "tagline": "梦幻柔和的离线 NAS 文件管理器",
   "description": "基于 Docker 的离线文件管理器，支持时间轴浏览、全文搜索、缩略图、EXIF、压缩解压与格式转换。完全离线运行，无任何联网请求或外部 API。",
@@ -16,7 +16,7 @@
   "window": {
     "port": 8080,
     "entry": "http://localhost:8080",
-    "title": "Aurafile",
+    "title": "光匣",
     "width": 1280,
     "height": 800
   },
