@@ -1,0 +1,3 @@
+#!/bin/bash
+# Aurafile config_callback — 配置变更后（无需额外操作）
+exit 0

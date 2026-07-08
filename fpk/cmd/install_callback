@@ -1,0 +1,3 @@
+#!/bin/bash
+# Aurafile install_callback — 安装后（无需额外操作）
+exit 0

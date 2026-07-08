@@ -1,9 +1,3 @@
-# Aurafile（光匣）fnOS 应用中心直接执行的 compose
-# 路径（脚手架内）：app/docker/docker-compose.yaml
-# 镜像从 GHCR 拉取，fpk 本身不含镜像，体积很小。
-# 注意：镜像内 ENTRYPOINT 已通过 su-exec 默认降权到 node(uid 1000)，
-#       因此此处【不要】再设 user:，否则 su-exec 无法切换身份会启动失败。
-
 services:
   aurafile:
     image: ghcr.io/planover/aurafile:latest
@@ -12,12 +6,9 @@ services:
     ports:
       - "8080:8080/tcp"
     volumes:
-      # 用户 NAS 数据根（主机）-> 容器 /data
       - /data:/data
-      # 应用数据：索引库 / 回收站 / 缩略图缓存（主机）-> 容器 /config/aurafile
       - /config/aurafile:/config/aurafile
     environment:
       - AURAFILE_ROOT=/data
       - AURAFILE_DATA=/config/aurafile
       - PORT=8080
-    # 健康检查已内置于镜像（Dockerfile HEALTHCHECK），此处无需重复声明。

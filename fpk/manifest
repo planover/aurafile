@@ -1,30 +1,15 @@
-# Aurafile（光匣）fnOS fpk manifest
-# 格式：INI，key=value（无引号、无 JSON 花括号）。由官方 fnpack 打包为 .fpk。
-# 镜像不写在此处 —— 由 app/docker/docker-compose.yaml 引用 ghcr.io/planover/aurafile:latest 拉取。
-# 注释行以 # 开头，fnpack 会忽略。
+appname         = aurafile
+version         = 0.1.2
+display_name    = 光匣
+desc            = 完全离线的飞牛 NAS 文件管理器：时间轴浏览、全文搜索、缩略图与 EXIF。运行时完全离线，无任何联网请求。
+platform        = x86
+source          = thirdparty
+maintainer      = planover
+maintainer_url  = https://github.com/planover/aurafile
+os_min_version  = 0.9.0
 
-# ===== 必填（依据 fnOS 标准脚手架 + 本 brief 明确项）=====
-appname=aurafile
-version=0.1.2
-display_name=光匣
-platform=x86
-service_port=8080
-os_min_version=0.1.0
-source=thirdparty
-
-# ===== 桌面窗口（fnOS 以本地窗口 / webview 形式打开 8080）=====
-# 说明：desktop_uidir 指向脚手架内的 UI 目录；desktop_applaunchname 为窗口启动入口名。
-desktop_uidir=ui
-desktop_applaunchname=aurafile.main
-
-# ===== 建议字段（依据 fnOS 文档，字段名待真机 / developer.fnnas.com 验证是否必填）=====
-# icon：fnOS 按约定读取脚手架根目录的 ICON.PNG / ICON_256.PNG；manifest 是否需 icon 键待验证。
-icon=ICON.PNG
-# type：应用分类，旧 fpk.json 用 category=工具，fnOS 标准字段疑似 type。
-type=tool
-# developer / author：作者标识，字段名待验证（可能为 developer 或 author）。
-developer=planover
-description=完全离线的飞牛 NAS 文件管理器：时间轴浏览、全文搜索、缩略图与 EXIF。
-# support_client：可运行客户端，pc / mobile。
-support_client=pc
-release_date=2026-07-08
+desktop_uidir   = ui
+desktop_applaunchname = aurafile.Application
+service_port    = 8080
+checkport       = true
+ctl_stop        = true

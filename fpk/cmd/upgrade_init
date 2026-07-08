@@ -1,0 +1,3 @@
+#!/bin/bash
+# Aurafile upgrade_init — 升级前（无需额外操作）
+exit 0

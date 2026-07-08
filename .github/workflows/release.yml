@@ -42,27 +42,28 @@ jobs:
         # fpk INI manifest 的 version 字段随 tag 自动同步（不再使用旧的 JSON fpk.json）
         run: sed -i "s/^version=.*/version=${{ steps.ver.outputs.version }}/" fpk/manifest
 
-      - name: Package fpk (fnpack, fallback to zip)
+      - name: Package fpk (tar.gz format per fnOS spec)
         id: pkg
         run: |
           VERSION="${{ steps.ver.outputs.version }}"
           OUT="aurafile-${VERSION}.fpk"
           built=""
           FNPACK_URL="https://static2.fnnas.com/fnpack/fnpack-1.2.3-linux-amd64"
-          # 优先使用官方 fnpack 打包标准 .fpk
-          if curl -fsSL "$FNPACK_URL" -o fnpack 2>/dev/null; then
+          # 优先使用官方 fnpack 打包标准 .fpk（fnpack 内部也是 tar.gz）
+          if curl -fsSL --connect-timeout 10 --max-time 30 "$FNPACK_URL" -o fnpack 2>/dev/null; then
             chmod +x fnpack
             ./fnpack build --directory fpk || true
-            # fnpack 以 manifest 的 appname(aurafile) 命名输出；可能在 cwd 或 fpk/ 目录内
             built=$(find . -maxdepth 2 -name '*.fpk' 2>/dev/null | grep -v "$OUT" | head -n1 || true)
             if [ -n "$built" ]; then
               mv "$built" "$OUT"
             fi
           fi
-          # 兜底：若 fnpack 不可达或打包失败，用等价 zip 布局（保持内部相对路径）兜底，待真机验证
+          # ⚠️ 兜底：若 fnpack 不可达，用 tar.gz 手动打包
+          #    fnOS 的 .fpk 本质是 tar.gz（参考 conversun/fnos-apps build-fpk.sh）
+          #    绝不能用 zip —— fnOS 不认 zip 格式的 fpk！
           if [ ! -f "$OUT" ]; then
-            echo "fnpack 未获取或打包失败，使用等价 zip 布局兜底（待真机验证）"
-            ( cd fpk && zip -r "../$OUT" . -x '*.DS_Store' )
+            echo "⚠️ fnpack 未获取，使用 tar.gz 等价打包（fpk = tar.gz 格式，非 zip）"
+            ( cd fpk && tar -czf "../$OUT" * )
           fi
           ls -la "$OUT"
           echo "fpk=$OUT" >> "$GITHUB_OUTPUT"

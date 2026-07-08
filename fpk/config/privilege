@@ -1,3 +1,1 @@
-{
-  "run-as": "package"
-}
+{"defaults": {"run-as": "package"}, "username": "aurafile", "groupname": "aurafile"}
