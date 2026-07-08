@@ -212,6 +212,30 @@ body {
 .about-qr img { width: 180px; height: 180px; border-radius: var(--r-md);
   border: 1px solid var(--line); background: #fff; }
 
+/* 关于页补全样式（沿用 token，梦幻柔和） */
+.about { max-height: 86vh; overflow-y: auto; }
+.about::-webkit-scrollbar { width: 6px; }
+.about::-webkit-scrollbar-thumb { background: var(--line); border-radius: 999px; }
+.about .about-desc { color: var(--text-1); margin: var(--sp-1) 0 0; }
+.about-promise {
+  margin: var(--sp-3) auto 0; max-width: 340px;
+  background: var(--accent-soft); border: 1px solid var(--line);
+  border-radius: var(--r-md); padding: var(--sp-2) var(--sp-3);
+  font-size: 12.5px; line-height: 1.5; color: var(--text-0);
+}
+.about-block { border-top: 1px solid var(--aura-divider); margin-top: var(--sp-3); padding-top: var(--sp-3); }
+.about-qr { border-top: 1px solid var(--aura-divider); margin-top: var(--sp-3); padding-top: var(--sp-3); }
+.about .about-label { color: var(--text-1); font-size: 12px; font-weight: 600; letter-spacing: .04em;
+  margin: 0 0 var(--sp-2); }
+.about-features { list-style: none; margin: 0 auto; padding: 0; text-align: left; max-width: 320px; }
+.about-features li { position: relative; padding-left: 16px; margin-bottom: var(--sp-1);
+  font-size: 12.5px; line-height: 1.55; color: var(--text-0); }
+.about-features li::before { content: ""; position: absolute; left: 4px; top: 7px;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--accent); }
+.about-links { display: flex; flex-direction: column; gap: var(--sp-1); align-items: center; }
+.about-links a { font-size: 12.5px; }
+.about .about-license { font-size: 11px; color: var(--text-1); margin: var(--sp-2) 0 0; }
+
 /* Toast */
 .toast {
   position: fixed; bottom: var(--sp-4); left: 50%; transform: translateX(-50%);
