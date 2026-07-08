@@ -3,12 +3,13 @@ services:
     image: ghcr.io/planover/aurafile:latest
     container_name: aurafile
     restart: unless-stopped
+    network_mode: bridge
     ports:
-      - "8080:8080/tcp"
+      - "8011:8011/tcp"
     volumes:
       - /data:/data
       - /config/aurafile:/config/aurafile
     environment:
       - AURAFILE_ROOT=/data
       - AURAFILE_DATA=/config/aurafile
-      - PORT=8080
+      - PORT=8011

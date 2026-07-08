@@ -2,6 +2,22 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.5] - 2026-07-08
+
+### Fixed
+- **修复容器启动失败 `[FATAL tini] exec /app/entrypoint.sh failed: Permission denied`**：Dockerfile 在 `COPY . .` 后未给 `entrypoint.sh` 添加执行权限。新增 `RUN chmod +x /app/entrypoint.sh`。
+- **修复桌面图标/窗口不显示**：根因为容器因权限问题崩溃 → `service_port` 从未监听 → fnOS `checkport=true` 检查失败 → 不注册桌面入口。修复权限后容器正常启动，桌面图标将自动出现。
+
+### Changed
+- **默认端口从 8080 改为 8011**（用户要求，8080 在 fnOS 上被占用）：
+  - `Dockerfile`：`EXPOSE 8011`、`PORT=8011`、healthcheck URL
+  - `fpk/manifest`：`service_port = 8011`
+  - `fpk/app/docker/docker-compose.yaml`：端口映射 `8011:8011`、`PORT=8011`
+  - `fpk/ui/config`：`port: "8011"`
+  - `src/config.js`：默认 PORT 回退值 `8011`
+  - `server.js` 注释、`README.md` 示例命令同步更新
+- **容器网络改为默认 bridge**：`docker-compose.yaml` 新增 `network_mode: bridge`，不再由 compose 新建自定义网络。
+
 ## [0.1.4] - 2026-07-08
 
 ### Fixed

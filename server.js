@@ -238,7 +238,7 @@ app.post('/api/convert', asyncH(async (req, res) => {
 // ---------- 启动 ----------
 indexer.start();
 
-const HOST = process.env.AURAFILE_HOST || '0.0.0.0'; // fnOS 窗口代理需从容器外访问 8080；可用 AURAFILE_HOST=127.0.0.1 降级为本机-only
+const HOST = process.env.AURAFILE_HOST || '0.0.0.0'; // fnOS 窗口代理需从容器外访问 8011；可用 AURAFILE_HOST=127.0.0.1 降级为本机-only
 const server = app.listen(cfg.PORT, HOST, () => {
   console.log(`Aurafile v${cfg.VERSION} 已启动：http://${HOST}:${cfg.PORT}`);
   console.log(`管理根目录：${cfg.ROOT} | 数据目录：${cfg.DATA}`);

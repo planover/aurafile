@@ -4,7 +4,7 @@ const fs = require('fs');
 
 // ---- 运行时配置（全部来自环境变量，便于 fpk/Docker 注入） ----
 const ROOT = process.env.AURAFILE_ROOT || '/data';
-const PORT = parseInt(process.env.PORT || '8080', 10);
+const PORT = parseInt(process.env.PORT || '8011', 10);
 
 // 应用数据目录（索引库 / 回收站 / 缩略图缓存）。优先使用独立配置卷，避免污染用户数据。
 const DATA =
