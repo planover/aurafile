@@ -12,10 +12,6 @@ RUN apk add --no-cache \
       perl-image-exiftool \
       tini \
       su-exec
-# 创建非 root 运行用户，降低权限（F-14）
-RUN addgroup -g 1000 aura \
- && adduser -D -u 1000 -G aura aura \
- && chown -R aura:aura /app
 
 WORKDIR /app
 
@@ -23,6 +19,9 @@ COPY package*.json ./
 RUN npm install --omit=dev --no-audit --no-fund
 
 COPY . .
+# node:18-alpine 已内置非 root 用户 node(uid 1000/gid 1000)，直接复用，避免自建用户 gid 冲突（F-14）
+# COPY 之后再 chown，确保 /app 下所有文件（含 node_modules、源码）归 node 所有，运行时可读写
+RUN chown -R node:node /app
 
 RUN mkdir -p /data /config/aurafile
 EXPOSE 8080
