@@ -1,0 +1,20 @@
+{
+  "title": "光匣 Aurafile 安装配置",
+  "description": "配置 Aurafile 需要访问的目录与端口。镜像由 fnOS 从 ghcr.io/planover/aurafile:latest 拉取（不内嵌）。",
+  "fields": [
+    {
+      "key": "AURAFILE_ROOT",
+      "label": "文件管理根目录",
+      "type": "path",
+      "default": "/data",
+      "desc": "要管理的 NAS 数据根目录（映射到容器 /data）"
+    },
+    {
+      "key": "PORT",
+      "label": "服务端口",
+      "type": "number",
+      "default": 8080,
+      "desc": "容器内 Web 服务端口，fnOS 窗口代理通过此端口访问"
+    }
+  ]
+}

@@ -7,7 +7,8 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: write      # 创建 GitHub Release
+  packages: write      # 推送镜像到 ghcr.io
 
 jobs:
   build-and-release:
@@ -23,19 +24,48 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Log in to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
       - name: Build image
-        run: docker build -t aurafile:${{ steps.ver.outputs.version }} .
-
-      - name: Export image to tar
-        run: docker save aurafile:${{ steps.ver.outputs.version }} -o aurafile-image.tar
-
-      - name: Package fpk
         run: |
-          mkdir -p dist
-          cp fpk.json dist/
-          cp aurafile-image.tar dist/
-          cp README.md dist/ 2>/dev/null || true
-          cd dist && zip -r ../aurafile.fpk . && cd ..
+          docker build \
+            -t ghcr.io/planover/aurafile:latest \
+            -t ghcr.io/planover/aurafile:${{ steps.ver.outputs.version }} .
+
+      - name: Push image to GHCR
+        run: |
+          docker push ghcr.io/planover/aurafile:latest
+          docker push ghcr.io/planover/aurafile:${{ steps.ver.outputs.version }}
+
+      - name: Sync manifest version to tag
+        # fpk INI manifest 的 version 字段随 tag 自动同步（不再使用旧的 JSON fpk.json）
+        run: sed -i "s/^version=.*/version=${{ steps.ver.outputs.version }}/" fpk/manifest
+
+      - name: Package fpk (fnpack, fallback to zip)
+        id: pkg
+        run: |
+          VERSION="${{ steps.ver.outputs.version }}"
+          OUT="aurafile-${VERSION}.fpk"
+          built=""
+          FNPACK_URL="https://static2.fnnas.com/fnpack/fnpack-1.2.3-linux-amd64"
+          # 优先使用官方 fnpack 打包标准 .fpk
+          if curl -fsSL "$FNPACK_URL" -o fnpack 2>/dev/null; then
+            chmod +x fnpack
+            ./fnpack build --directory fpk || true
+            # fnpack 以 manifest 的 appname(aurafile) 命名输出；可能在 cwd 或 fpk/ 目录内
+            built=$(find . -maxdepth 2 -name '*.fpk' 2>/dev/null | grep -v "$OUT" | head -n1 || true)
+            if [ -n "$built" ]; then
+              mv "$built" "$OUT"
+            fi
+          fi
+          # 兜底：若 fnpack 不可达或打包失败，用等价 zip 布局（保持内部相对路径）兜底，待真机验证
+          if [ ! -f "$OUT" ]; then
+            echo "fnpack 未获取或打包失败，使用等价 zip 布局兜底（待真机验证）"
+            ( cd fpk && zip -r "../$OUT" . -x '*.DS_Store' )
+          fi
+          ls -la "$OUT"
+          echo "fpk=$OUT" >> "$GITHUB_OUTPUT"
 
       - name: Generate latest.json
         run: |
@@ -43,7 +73,7 @@ jobs:
           {
             "version": "${{ steps.ver.outputs.version }}",
             "name": "Aurafile",
-            "fpk": "aurafile.fpk",
+            "fpk": "aurafile-${{ steps.ver.outputs.version }}.fpk",
             "publishedAt": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "notes": "https://github.com/planover/aurafile/releases/tag/${{ github.ref_name }}"
           }
@@ -53,10 +83,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            aurafile.fpk
+            aurafile-${{ steps.ver.outputs.version }}.fpk
             latest.json
           name: Aurafile ${{ steps.ver.outputs.version }}
           body: |
             Aurafile v${{ steps.ver.outputs.version }} — 梦幻柔和的离线 NAS 文件管理器
+            （fnOS fpk · 仅 X86 / amd64 · 镜像从 ghcr.io/planover/aurafile:latest 拉取，fpk 不内嵌镜像）
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

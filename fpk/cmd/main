@@ -1,0 +1,31 @@
+#!/bin/sh
+# Aurafile（光匣）fnOS 生命周期脚本
+# 由 fnOS 以 start / stop / status 三个参数调用。
+# 退出码约定（status）：0 = 运行中，3 = 未运行。
+# 说明：本脚本仅负责调度 compose；镜像不内嵌，运行时由
+# app/docker/docker-compose.yaml 从 ghcr.io/planover/aurafile:latest 拉取。
+
+APP_DIR="$(cd "$(dirname "$0")/../app/docker" && pwd)"
+
+cmd="$1"
+case "$cmd" in
+  start)
+    cd "$APP_DIR" || exit 1
+    docker compose up -d
+    ;;
+  stop)
+    cd "$APP_DIR" || exit 1
+    docker compose down
+    ;;
+  status)
+    # 0 = 运行中，3 = 未运行
+    if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx aurafile; then
+      exit 0
+    fi
+    exit 3
+    ;;
+  *)
+    echo "usage: $0 {start|stop|status}" >&2
+    exit 1
+    ;;
+esac
