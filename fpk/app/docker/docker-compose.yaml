@@ -5,11 +5,11 @@ services:
     restart: unless-stopped
     network_mode: bridge
     ports:
-      - "8011:8011/tcp"
+      - "8018:8018/tcp"
     volumes:
       - /data:/data
       - /config/aurafile:/config/aurafile
     environment:
       - AURAFILE_ROOT=/data
       - AURAFILE_DATA=/config/aurafile
-      - PORT=8011
+      - PORT=8018

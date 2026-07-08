@@ -2,6 +2,25 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.6] - 2026-07-08
+
+### Fixed
+- **修复关于弹窗「关闭」按钮无效**：`<button>` 缺少 `type="button"` 属性。在 fnOS iframe 嵌入场景下，浏览器将按钮默认视为 `type="submit"`，触发表单提交/页面刷新导致 `hidden=true` 被回滚，弹窗无法关闭。修复：关闭按钮及所有弹窗按钮统一添加 `type="button"`；JS 事件处理增加 `e.preventDefault()` 防御。
+
+### Changed
+- **默认端口从 8011 改为 8018**（用户要求）：
+  - `Dockerfile`：`EXPOSE 8018`、`PORT=8018`、healthcheck URL
+  - `fpk/manifest`：`service_port = 8018`、版本 `0.1.6`
+  - `fpk/app/docker/docker-compose.yaml`：端口映射 `8018:8018`、`PORT=8018`
+  - `fpk/ui/config`：`port: "8018"`
+  - `src/config.js`：默认 PORT 回退值 `8018`
+  - `server.js` 注释同步更新
+
+### Notes（桌面图标）
+- 桌面图标不显示的根因分析：v0.1.5 安装时容器因权限问题崩溃 → fnOS `checkport` 失败 → 缓存了「启动失败」状态 → 后续容器修复后桌面入口未重新注册。
+- **解决方案**：v0.1.6 需要在 fnOS 上**删除旧应用后重新导入 fpk**（非升级/覆盖安装），让 fnOS 重新执行完整的桌面注册流程。
+- fpk 配置结构已与 FN-Terminal（已验证可正常显示桌面的 fnOS 应用）逐字段对齐：`desktop_applaunchname` 与 ui/config key 一致、图标路径使用 `{0}` 占位符、`type: "url"` 对独立端口访问正确。
+
 ## [0.1.5] - 2026-07-08
 
 ### Fixed

@@ -25,12 +25,12 @@ RUN chown -R node:node /app \
  && chmod +x /app/entrypoint.sh
 
 RUN mkdir -p /data /config/aurafile
-EXPOSE 8011
+EXPOSE 8018
 
 ENV AURAFILE_ROOT=/data \
     AURAFILE_DATA=/config/aurafile \
-    PORT=8011
+    PORT=8018
 
 ENTRYPOINT ["/sbin/tini", "--", "/app/entrypoint.sh"]
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 \
-  CMD wget -qO- http://localhost:8011/api/health || exit 1
+  CMD wget -qO- http://localhost:8018/api/health || exit 1

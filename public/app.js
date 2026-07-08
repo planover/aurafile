@@ -295,7 +295,7 @@ $('#aboutBtn').onclick = async () => {
   $('#aboutGithub').href = a.github;
   $('#aboutModal').hidden = false;
 };
-$('#aboutClose').onclick = () => ($('#aboutModal').hidden = true);
+$('#aboutClose').onclick = (e) => { e.preventDefault(); $('#aboutModal').hidden = true; };
 
 document.querySelectorAll('.modal').forEach((m) =>
   m.addEventListener('click', (e) => { if (e.target === m) m.hidden = true; })
