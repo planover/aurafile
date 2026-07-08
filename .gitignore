@@ -1,6 +1,7 @@
 node_modules/
 data/
 config/
+!fpk/config/
 *.log
 .DS_Store
 .aura-extract-*

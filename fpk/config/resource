@@ -1,0 +1,12 @@
+{
+  "defaultDirs": [
+    {
+      "path": "/data",
+      "desc": "NAS 数据根目录（映射到容器 /data，由 AURAFILE_ROOT 指定）"
+    },
+    {
+      "path": "/config/aurafile",
+      "desc": "应用数据目录：索引库 / 回收站 / 缩略图缓存（映射到容器 /config/aurafile）"
+    }
+  ]
+}
