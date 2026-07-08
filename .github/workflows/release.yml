@@ -42,6 +42,17 @@ jobs:
         # fpk INI manifest 的 version 字段随 tag 自动同步（不再使用旧的 JSON fpk.json）
         run: sed -i "s/^version=.*/version=${{ steps.ver.outputs.version }}/" fpk/manifest
 
+      - name: Generate app.tgz (fnOS extracts this during install)
+        # fnOS 安装时会解压 fpk 根目录的 app.tgz；缺失则报「解压app.tgz失败」
+        run: |
+          if [ -d fpk/app ] && [ "$(ls -A fpk/app)" ]; then
+            tar -czf fpk/app.tgz -C fpk/app .
+            echo "✅ app.tgz created ($(ls -lh fpk/app.tgz | awk '{print $5}'))"
+            tar -tzf fpk/app.tgz | head -5
+          else
+            echo "⚠️ fpk/app/ is empty or missing, skipping app.tgz"
+          fi
+
       - name: Package fpk (tar.gz format per fnOS spec)
         id: pkg
         run: |
