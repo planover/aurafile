@@ -2,6 +2,23 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.7] - 2026-07-08
+
+### Fixed
+- **关于页从弹窗改为独立页面**（用户要求）：移除 `index.html` 中的 aboutModal 弹窗，新增独立的 `/about` 页面（`public/about.html`），点击 ℹ 按钮直接跳转。彻底解决 fnOS iframe 嵌入场景下弹窗关闭按钮无效的问题。
+- **🎯 修复桌面图标不显示的根因——图标文件名错误**：
+  - `fpk/ui/images/icon-64.png` → 重命名为 **`icon_64.png`**（连字符→下划线）
+  - `fpk/ui/images/icon-256.png` → 重命名为 **`icon_256.png`**
+  - **根因**：ui/config 中 icon 路径为 `images/icon_{0}.png`，fnOS 将 `{0}` 替换为 `64`/`256` 后查找 `icon_64.png`，但实际文件名使用的是**连字符** `icon-64.png`，文件找不到 → 桌面图标无法渲染。
+
+### Changed
+- **桌面入口类型改为 iframe**：`fpk/ui/config` 中 `type` 从 `"url"` 改为 `"iframe"`，应用将在 fnOS 桌面窗口内嵌加载（而非新标签页打开）。
+- **X-Frame-Options 放宽为 SAMEORIGIN**：`server.js` 安全头从 `DENY` 改为 `SAMEORIGIN`，允许 fnOS 桌面窗口以 iframe 方式嵌入应用页面。
+
+### Notes（桌面图标）
+- 图标文件名修复后，**必须删除 fnOS 上的旧应用，重新导入 v0.1.7 fpk**。升级/覆盖安装不会刷新图标缓存。
+- fnOS Docker 应用桌面图标消失是**已知系统问题**（论坛大量反馈：N100+16G 设备同样复现，官方确认为潜在性能导致的自启动失败）。如重导入后图标仍不稳定，可使用 [fndesk](https://github.com/IMGZCQ/fndesk) 或 [App.Bin.customIcon](https://github.com/FNOSP/App.Bin.customIcon) 等第三方工具手动添加桌面快捷方式。
+
 ## [0.1.6] - 2026-07-08
 
 ### Fixed

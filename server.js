@@ -23,7 +23,7 @@ app.use(express.json({ limit: '5mb' }));
 // 基础安全响应头（F-10）
 app.use((req, res, next) => {
   res.set('X-Content-Type-Options', 'nosniff');
-  res.set('X-Frame-Options', 'DENY');
+  res.set('X-Frame-Options', 'SAMEORIGIN');
   res.set('Referrer-Policy', 'no-referrer');
   next();
 });

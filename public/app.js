@@ -289,13 +289,7 @@ $('#filterReset').onclick = () => {
   $('#filterModal').hidden = true; loadTimeline();
 };
 
-$('#aboutBtn').onclick = async () => {
-  const a = await api('/api/about');
-  $('#aboutVer').textContent = 'v' + a.version;
-  $('#aboutGithub').href = a.github;
-  $('#aboutModal').hidden = false;
-};
-$('#aboutClose').onclick = (e) => { e.preventDefault(); $('#aboutModal').hidden = true; };
+$('#aboutBtn').onclick = () => { window.location.href = '/about'; };
 
 document.querySelectorAll('.modal').forEach((m) =>
   m.addEventListener('click', (e) => { if (e.target === m) m.hidden = true; })

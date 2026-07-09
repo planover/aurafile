@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>关于 · 光匣 Aurafile</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{
+      --bg:#f0eef4;--card:#ffffff;--text-1:#2d2a3a;--text-2:#6b6680;
+      --accent:#7c5cfc;--accent-soft:#eae5ff;--radius:16px;--shadow:0 8px 32px rgba(45,42,58,.08)
+    }
+    body{font-family:-apple-system,"PingFang SC","Noto Sans CJK SC",sans-serif;background:var(--bg);color:var(--text-1);min-height:100vh;display:flex;justify-content:center;padding:40px 16px}
+    .about-page{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);max-width:640px;width:100%;padding:48px 40px}
+    .back-link{display:inline-flex;align-items:center;gap:6px;color:var(--accent);text-decoration:none;font-size:.9rem;margin-bottom:28px;cursor:pointer}
+    .back-link:hover{text-decoration:underline}
+    .about-aura{display:inline-block;width:48px;height:48px;border-radius:14px;background:linear-gradient(135deg,#7c5cfc,#a78bfa,#c4b5fd);margin-bottom:16px;box-shadow:0 4px 16px rgba(124,92,252,.25)}
+    h2{font-size:1.6rem;font-weight:700;margin-bottom:4px}
+    .tag{color:var(--text-2);font-size:.95rem;margin-bottom:8px}
+    .ver{color:var(--accent);font-size:.88rem;font-weight:600;margin-bottom:16px}
+    .desc{color:var(--text-2);line-height:1.65;margin-bottom:20px}
+    .promise{background:var(--accent-soft);border-radius:10px;padding:12px 18px;font-size:.88rem;color:var(--accent);margin-bottom:24px}
+    .block{margin-bottom:24px}
+    .label{font-weight:600;font-size:.95rem;margin-bottom:10px}
+    ul{list-style:none;padding:0}
+    li{padding:6px 0 6px 20px;position:relative;font-size:.9rem;color:var(--text-2);line-height:1.55}
+    li::before{content:"✦";position:absolute;left:0;color:var(--accent);font-size:.75rem;top:9px}
+    .links a{display:block;color:var(--accent);text-decoration:none;font-size:.9rem;padding:4px 0}
+    .links a:hover{text-decoration:underline}
+    .license{font-size:.85rem;color:var(--text-2);margin-top:8px}
+    .qr-section{text-align:center;margin-top:8px}
+    .qr-section p{font-size:.9rem;margin-bottom:10px;color:var(--text-2)}
+    .qr-section img{width:160px;height:auto;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="about-page">
+    <a class="back-link" onclick="history.back()">← 返回</a>
+
+    <div class="about-aura"></div>
+    <h2>光匣 Aurafile</h2>
+    <p class="tag">梦幻柔和的离线 NAS 文件管理器</p>
+    <p class="ver" id="ver"></p>
+    <p class="desc">专为飞牛 NAS（fnOS）fpk 窗口打造，所有数据始终留在你自己的设备里。</p>
+
+    <div class="promise">
+      🔒 完全离线运行 · 无任何联网请求、外部 API、遥测与广告
+    </div>
+
+    <div class="block">
+      <p class="label">✨ 核心特性</p>
+      <ul>
+        <li>完整文件操作：重命名 / 复制 / 剪切 / 撤销重做 / 回收站</li>
+        <li>全文检索：按名称、类型、大小、时间，甚至文件内部文本</li>
+        <li>缩略图与元信息：图片、视频抽帧预览，EXIF 查看</li>
+        <li>压缩解压：zip / tar.gz / 7z，防 Zip-Slip 与解压炸弹</li>
+        <li>增量索引与时间轴：实时监控、搜索秒开，按今天 / 本周 / 本月分组</li>
+      </ul>
+    </div>
+
+    <div class="block">
+      <p class="label">🌿 作者与仓库</p>
+      <div class="links">
+        <a id="ghLink" href="#" target="_blank" rel="noopener">源码仓库 · github.com/planover/aurafile</a>
+        <a href="https://github.com/planover" target="_blank" rel="noopener">作者主页 · github.com/planover</a>
+      </div>
+      <p class="license">基于 MIT License 开源发布</p>
+    </div>
+
+    <div class="qr-section">
+      <p>赞赏作者：</p>
+      <img id="qrImg" src="/about-qr.svg" alt="赞赏码" />
+    </div>
+  </div>
+
+  <script>
+    fetch('/api/about').then(r=>r.json()).then(a=>{
+      document.getElementById('ver').textContent = 'v' + a.version;
+      document.getElementById('ghLink').href = a.github;
+    }).catch(()=>{});
+  </script>
+</body>
+</html>
