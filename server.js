@@ -94,6 +94,9 @@ app.get('/api/about', (req, res) =>
   })
 );
 
+// 关于页（独立页面，显式路由，避免依赖静态中间件扩展名回退）
+app.get('/about', (req, res) => res.sendFile(path.join(__dirname, 'public', 'about.html')));
+
 // ---------- 浏览 / 时间轴 / 搜索 ----------
 app.get('/api/browse', asyncH(async (req, res) => {
   const dir = fsops.resolveSafe(req.query.path || '.');

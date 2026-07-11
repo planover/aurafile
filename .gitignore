@@ -5,3 +5,4 @@ config/
 *.log
 .DS_Store
 .aura-extract-*
+.aurafile-data/

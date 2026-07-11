@@ -2,6 +2,16 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.8] - 2026-07-11
+
+### Fixed
+- **关于页打开 404（自测发现 HIGH 阻塞项）**：`aboutBtn` 跳转 `/about`，但 `server.js` 仅用 `express.static` 映射真实文件、无 `/about` 路由 → `GET /about` 返回 404，关于页实际打不开。已在 `server.js` 增加显式路由 `app.get('/about', ...)` 指向 `public/about.html`，不再依赖静态中间件扩展名回退。
+- **提交的 `fpk/app.tgz` 端口陈旧（自测发现 MEDIUM 项）**：仓库内 `app.tgz` 是 v0.1.5 时期的快照，compose 仍为 `8011:8011` / `PORT=8011`，与源码 `8018` 不一致。已用 `tar -czf fpk/app.tgz -C fpk/app .` 重新生成（与 CI「Generate app.tgz」步骤一致），现 compose 端口 = `8018:8018` / `PORT=8018`。CI 发布路径本就会重生成，但手动/本地打包此前会带上旧 8011 → checkport 失配 → fnOS 桌面入口不注册。
+
+### Chore
+- 删除修复前遗留的陈旧连字符图标 `app/ui/images/icon-64.png`、`icon-256.png`（未被任何代码引用，仅 `fpk/ui/images/` 下划线版生效）。
+- `.gitignore` 增加 `.aurafile-data/`（运行时数据目录）。
+
 ## [0.1.7] - 2026-07-08
 
 ### Fixed
