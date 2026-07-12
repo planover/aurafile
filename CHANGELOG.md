@@ -2,6 +2,17 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.14] - 2026-07-12
+
+### Fixed
+- **筛选栏 × 关闭按钮无响应**：`#filterCloseBtn` 在 HTML 中存在但 app.js 漏绑了 onclick 事件，导致点击 × 无反应。已补上 `$('#filterCloseBtn').onclick = () => hideFilterBar()`。
+- **详情面板日期/时间显示 NaN-NaN-NaN**：`fmtDate()` 对 null/undefined 输入产生 Invalid Date → 全字段 NaN。已增加容错（返回 "—"）；同时 `openDetail` 在元数据不完整时显示明确提示。
+- **图片/视频预览功能缺失**：此前单击图片/视频仅选中，无法查看原始大小内容。新增**双击打开内联预览覆盖层**（支持图片原大查看 + 视频播放，Esc/×/背景点击关闭），零 modal 设计。
+
+### Changed
+- ESC 键现在同时关闭详情面板和预览覆盖层
+- 缩略图加载失败时的降级提示改善
+
 ## [0.1.13] - 2026-07-12
 
 ### Fixed

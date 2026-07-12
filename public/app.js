@@ -46,7 +46,9 @@ function fmtSize(n) {
   return (n / 1073741824).toFixed(2) + ' GB';
 }
 function fmtDate(ms) {
-  const d = new Date(ms);
+  if (ms == null || isNaN(ms) || ms === 0) return '—';
+  const d = new Date(+ms);
+  if (isNaN(d.getTime())) return '—';
   const p = (x) => String(x).padStart(2, '0');
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 }
@@ -125,6 +127,12 @@ function fileCard(it) {
       selectOnly(it.path, card);
     }
   });
+  // 双击图片/视频打开原始大小预览
+  card.addEventListener('dblclick', (e) => {
+    if (card.classList.contains('inline-editing')) return;
+    e.preventDefault();
+    if (it.kind === 'image' || it.kind === 'video') openPreview(it);
+  });
   return card;
 }
 
@@ -161,11 +169,15 @@ async function openDetail(it) {
   if (meta.kind === 'image') {
     html += `<img class="detail-preview" src="/api/thumbnail?path=${encodeURIComponent(meta.path)}&w=320" onerror="this.style.display='none'">`;
   }
-  html += kv('名称', meta.name) + kv('路径', '/' + meta.path) + kv('类型', meta.kind);
+  html += kv('名称', meta.name) + kv('路径', '/' + meta.path) + kv('类型', meta.kind || '未知');
   if (!meta.isDir) {
     html += kv('大小', fmtSize(meta.size));
     html += kv('修改时间', fmtDate(meta.mtime)) + kv('创建时间', fmtDate(meta.ctime));
-    html += kv('权限', meta.perms || '');
+    html += kv('权限', meta.perms || '—');
+  }
+  // 元数据不完整时提示
+  if (meta.size == null && !meta.isDir) {
+    html += '<div style="margin-top:8px;color:var(--text-3);font-size:13px">⚠ 部分元信息不可用（文件可能已被移动或删除，或索引未完整）</div>';
   }
   body.innerHTML = html;
 
@@ -183,6 +195,51 @@ async function openDetail(it) {
   sessionStorage.setItem('lastDetail', JSON.stringify(meta));
 }
 function kv(k, v) { return `<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v ?? '')}</span></div>`; }
+
+// ══════════════════════════════════════════════════════════════
+// ★ 内联预览覆盖层（双击图片/视频打开，零 modal）★
+// ══════════════════════════════════════════════════════════════
+let _previewEl = null;
+
+function openPreview(it) {
+  closePreview();
+  const ov = document.createElement('div');
+  ov.id = '__previewOverlay';
+  ov.className = 'preview-overlay';
+  const url = it.kind === 'video'
+    ? `/api/raw?path=${encodeURIComponent(it.path)}`
+    : `/api/raw?path=${encodeURIComponent(it.path)}`;
+  const isVideo = it.kind === 'video';
+  ov.innerHTML = `
+    <div class="preview-toolbar">
+      <span class="preview-filename">${esc(it.name)}</span>
+      <button id="__previewClose" class="inline-bar-close" title="关闭 (Esc)">×</button>
+    </div>
+    <div class="preview-body">
+      ${isVideo
+        ? `<video controls autoplay src="${url}" style="max-width:90vw;max-height:80vh"></video>`
+        : `<img src="${url}" alt="${esc(it.name)}" style="max-width:90vw;max-height:80vh;object:contain" />`
+      }
+    </div>
+    <div class="preview-hint">${isVideo ? '视频预览' : '图片预览'} · Esc / × 关闭</div>
+  `;
+  document.body.appendChild(ov);
+  _previewEl = ov;
+  requestAnimationFrame(() => {
+    const closeBtn = document.getElementById('__previewClose');
+    if (closeBtn) {
+      const doClose = () => closePreview();
+      closeBtn.onclick = doClose;
+      closeBtn.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); doClose(); });
+    }
+  });
+  // 点击背景关闭
+  ov.addEventListener('click', (e) => { if (e.target === ov) closePreview(); });
+}
+
+function closePreview() {
+  if (_previewEl) { _previewEl.remove(); _previewEl = null; }
+}
 
 // ══════════════════════════════════════════════════════════════
 // ★ 内联操作系统（零 modal，纯文档流内交互）★
@@ -436,10 +493,12 @@ $('#filterBtn').onclick = () => toggleFilterBar();
 // ★ 内联筛选栏的按钮绑定
 $('#filterApplyBtn').onclick = () => applyFilters();
 $('#filterResetBtn').onclick = () => resetFilters();
+$('#filterCloseBtn').onclick = () => hideFilterBar();
 
 $('#aboutBtn').onclick = () => { window.location.href = '/about'; };
 
 document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { closePreview(); ($('#detail').hidden = true); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); doAction('undo'); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); doAction('redo'); }
 });

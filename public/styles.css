@@ -297,3 +297,35 @@ body {
   cursor: pointer; padding: 4px; margin-left: auto;
 }
 .inline-bar-close:hover { color: var(--danger); }
+
+/* ★ 内联预览覆盖层（零 modal）★ */
+.preview-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  animation: fadeIn .15s ease-out;
+}
+.preview-toolbar {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; background: rgba(30, 28, 46, 0.85);
+  color: #e8e6f0; font-size: 14px; backdrop-filter: blur(8px);
+}
+.preview-filename {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: calc(100vw - 60px); font-size: 13px; opacity: 0.85;
+}
+.preview-body {
+  display: flex; align-items: center; justify-content: center;
+  flex: 1; width: 100%; padding: 56px 20px 48px; box-sizing: border-box;
+}
+.preview-body img,
+.preview-body video {
+  max-width: 90vw; max-height: 75vh;
+  border-radius: var(--r-md); box-shadow: 0 12px 48px rgba(0, 0, 0, 0.45);
+  object-fit: contain;
+}
+.preview-hint {
+  position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+  color: rgba(255, 255, 255, 0.5); font-size: 12px; pointer-events: none;
+}
