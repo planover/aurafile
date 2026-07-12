@@ -1,5 +1,5 @@
 appname         = aurafile
-version         = 0.1.8
+version         = 0.1.9
 display_name    = 光匣
 desc            = 完全离线的飞牛 NAS 文件管理器：时间轴浏览、全文搜索、缩略图与 EXIF。运行时完全离线，无任何联网请求。
 platform        = x86

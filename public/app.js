@@ -243,11 +243,13 @@ function promptText(title, def) {
     const inp = $('#promptInput');
     inp.value = def || '';
     m.hidden = false; inp.focus(); inp.select();
-    const ok = () => { m.hidden = true; res(inp.value.trim()); };
-    const cancel = () => { m.hidden = true; res(null); };
-    $('#promptOk').onclick = ok;
-    $('#promptCancel').onclick = cancel;
-    inp.onkeydown = (e) => { if (e.key === 'Enter') ok(); if (e.key === 'Escape') cancel(); };
+    // 用 IIFE 包裹确保 e 对象可用；preventDefault + stopPropagation 防 iframe 干扰
+    const ok = (e) => { e.preventDefault(); e.stopPropagation(); m.hidden = true; res(inp.value.trim()); };
+    const cancel = (e) => { e.preventDefault(); e.stopPropagation(); m.hidden = true; res(null); };
+    const bind = (id, fn) => { const el = $(id); el.onclick = fn; };  // 保持 onclick + 带 event 参数
+    bind('#promptOk', ok);
+    bind('#promptCancel', cancel);
+    inp.onkeydown = (e) => { if (e.key === 'Enter') ok(e); if (e.key === 'Escape') cancel(e); };
   });
 }
 

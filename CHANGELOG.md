@@ -2,6 +2,11 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.9] - 2026-07-12
+
+### Fixed
+- **输入弹窗（promptModal）确定/取消按钮无响应**：`app.js` 中 `promptText()` 的 `ok`/`cancel` 回调函数未接收 event 参数、无 `preventDefault()` + `stopPropagation()`，在 fnOS iframe 嵌入环境中点击按钮时事件被浏览器默认行为或父框架拦截，导致弹窗无法关闭、回调不执行。已加固事件处理：箭头函数接收 `e` 参数并调用 `e.preventDefault(); e.stopPropagation();`。
+
 ## [0.1.8] - 2026-07-11
 
 ### Fixed
