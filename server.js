@@ -10,7 +10,12 @@ const thumb = require('./src/thumb');
 const exif = require('./src/exif');
 const indexer = require('./src/indexer');
 
-db.init();
+try {
+  db.init();
+} catch (e) {
+  // DB 初始化失败只记录，不让进程立即退出（避免容器重启循环）；HTTP 仍可起，便于排查
+  console.error('[Aurafile] 数据库初始化失败：', e.message);
+}
 
 let hasSharp = false;
 try {
@@ -239,12 +244,26 @@ app.post('/api/convert', asyncH(async (req, res) => {
 }));
 
 // ---------- 启动 ----------
-indexer.start();
+try {
+  indexer.start();
+} catch (e) {
+  console.error('[Aurafile] 索引器启动失败（HTTP 服务仍正常）：', e.message);
+}
 
 const HOST = process.env.AURAFILE_HOST || '0.0.0.0'; // fnOS 窗口代理需从容器外访问 8018；可用 AURAFILE_HOST=127.0.0.1 降级为本机-only
 const server = app.listen(cfg.PORT, HOST, () => {
   console.log(`Aurafile v${cfg.VERSION} 已启动：http://${HOST}:${cfg.PORT}`);
   console.log(`管理根目录：${cfg.ROOT} | 数据目录：${cfg.DATA}`);
+});
+
+// 端口被占用时给出清晰日志，避免匿名崩溃 + 重启循环
+server.on('error', (e) => {
+  if (e.code === 'EADDRINUSE') {
+    console.error(`[Aurafile] 端口 ${cfg.PORT} 已被占用，请停止占用该端口的旧容器/进程后重试`);
+  } else {
+    console.error('[Aurafile] 服务监听失败：', e.message);
+  }
+  // 不立即 process.exit，交给 restart 策略；日志可助排查
 });
 
 module.exports = server;

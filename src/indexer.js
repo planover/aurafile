@@ -55,9 +55,24 @@ async function unindex(filePath) {
   db.remove(filePath);
 }
 
-// 初始全量扫描（带去抖，避免一次性打满 IO）
+// 初始全量扫描：分批 + 让出事件循环 + 错误隔离，避免大 NAS 上 OOM 被 kill 导致容器无限重启
+const SCAN_BATCH = 200;        // 每批索引文件数
+const SCAN_YIELD_MS = 5;       // 每批后让出事件循环，给 GC 与 IO 喘息
+const SCAN_MAX_DEPTH = 25;     // 目录递归深度上限，防极深目录栈溢出
+const SCAN_MAX_FILES = 500000; // 全量扫描文件数上限，超出则停止（依赖 watcher 增量补充）
+
 async function initialScan() {
-  const walk = async (dir) => {
+  let pending = [];
+  let total = 0;
+  const flush = async () => {
+    const batch = pending;
+    pending = [];
+    // 并发写入本批，单个失败不影响整体
+    await Promise.all(batch.map((f) => indexFile(f).catch(() => {})));
+  };
+  const walk = async (dir, depth) => {
+    if (total >= SCAN_MAX_FILES) return;
+    if (depth > SCAN_MAX_DEPTH) return;
     let entries;
     try {
       entries = await fs.readdir(dir, { withFileTypes: true });
@@ -68,13 +83,26 @@ async function initialScan() {
       const full = path.join(dir, e.name);
       if (e.isDirectory()) {
         if (isExcluded(full)) continue;
-        await walk(full);
+        await walk(full, depth + 1);
       } else if (e.isFile()) {
-        await indexFile(full);
+        pending.push(full);
+        total++;
+        if (pending.length >= SCAN_BATCH) {
+          await flush();
+          await new Promise((r) => setTimeout(r, SCAN_YIELD_MS)); // 让出事件循环，避免内存累积 OOM
+        }
       }
+      if (total >= SCAN_MAX_FILES) return;
     }
   };
-  await walk(cfg.ROOT);
+  try {
+    await walk(cfg.ROOT, 0);
+    await flush();
+    console.log(`[Aurafile] 初始索引完成：扫描 ${total} 个文件`);
+  } catch (e) {
+    // 扫描失败不得让进程崩溃——服务仍应正常起来，依赖 watcher 增量补充
+    console.error('[Aurafile] 初始索引部分失败（已跳过，服务继续）：', e.message);
+  }
 }
 
 let watcher = null;
@@ -97,22 +125,28 @@ function schedule(file, action) {
 }
 
 function start() {
-  initialScan().then(() => {
-    watcher = chokidar.watch(cfg.ROOT, {
-      ignoreInitial: true,
-      ignored: (p) => isExcluded(p),
-      depth: 99,
-      persistent: true,
+  // 初始扫描在后台进行，失败不影响 HTTP 服务起来
+  initialScan()
+    .catch((e) => console.error('[Aurafile] 初始索引启动失败：', e.message))
+    .then(() => {
+      try {
+        watcher = chokidar.watch(cfg.ROOT, {
+          ignoreInitial: true,
+          ignored: (p) => isExcluded(p),
+          depth: 20,
+          persistent: true,
+        });
+        watcher
+          .on('error', (e) => console.error('[Aurafile] 文件监听错误（增量索引可能不完整）：', e.message))
+          .on('add', (p) => schedule(p, 'add'))
+          .on('change', (p) => schedule(p, 'change'))
+          .on('unlink', (p) => schedule(p, 'unlink'))
+          .on('addDir', () => {})
+          .on('unlinkDir', (p) => {});
+      } catch (e) {
+        console.error('[Aurafile] 文件监听启动失败（增量索引不可用，但 HTTP 服务正常）：', e.message);
+      }
     });
-    watcher
-      .on('add', (p) => schedule(p, 'add'))
-      .on('change', (p) => schedule(p, 'change'))
-      .on('unlink', (p) => schedule(p, 'unlink'))
-      .on('addDir', () => {})
-      .on('unlinkDir', (p) => {
-        // 目录下文件由 unlink 事件逐条处理；此处仅占位
-      });
-  });
   return watcher;
 }
 

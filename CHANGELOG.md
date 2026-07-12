@@ -2,6 +2,14 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.10] - 2026-07-12
+
+### Fixed
+- **容器不断重启（OOM crash loop）**：`src/indexer.js` 的 `initialScan()` 启动时无保护地全量递归遍历整个 NAS（无论数据量多大），无分批、无并发限制、无错误捕获，且 `await` 串行阻塞。大 NAS 上内存累积触发 OOM killer → 容器退出 → `restart: unless-stopped` 无限重启。已改为：分批（每批 200 文件）+ 每批 `setTimeout` 让出事件循环 + 递归深度上限 25 + 文件总数上限 50 万 + 全程 `try/catch` 隔离（扫描失败只 log，不致命）。
+- **启动层崩溃隔离**：`server.js` 中 `db.init()` 与 `indexer.start()` 原本抛错即 crash。现已包 `try/catch`，确保 HTTP 服务优先起来，DB/索引失败仅记录日志，不再触发重启循环。
+- **chokidar watcher 加固**：`depth` 由 99 降为 20，`start()` 内扫描与 watcher 启动均加 `try/catch` 与 `watcher.on('error', ...)`，监听失败不影响 HTTP 服务。
+- **端口占用友好提示**：`app.listen` 增加 `error` 事件处理，端口被占用（如旧容器未释放 8018）时打印清晰日志而非匿名崩溃。
+
 ## [0.1.9] - 2026-07-12
 
 ### Fixed
