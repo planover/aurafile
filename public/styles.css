@@ -173,32 +173,39 @@ body {
 .detail-preview { width: 100%; border-radius: var(--r-sm); margin-bottom: var(--sp-3);
   background: linear-gradient(135deg, var(--aura-a), var(--aura-c)); }
 
-/* 弹层 / 模态 */
-.modal { position: fixed; inset: 0; background: rgba(45,42,61,.28);
-  backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 50; }
-.modal-card {
-  width: min(420px, 92vw); background: var(--surface-strong);
-  border: 1px solid var(--line); border-radius: var(--r-xl);
-  padding: var(--sp-4); box-shadow: var(--shadow-soft); animation: pop .26s var(--ease);
+/* ═══ 内联筛选栏（替代 filterModal，零 z-index，零 modal）═══ */
+.filter-bar {
+  display: none;
+  padding: var(--sp-3) var(--sp-4);
+  margin-bottom: var(--sp-2);
+  background: var(--surface-strong); border: 1px solid var(--accent);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-card);
+}
+.filter-bar.visible { display: block; animation: pop .22s var(--ease); }
+.filter-row {
+  display: flex; gap: var(--sp-3); align-items: flex-end; flex-wrap: wrap;
+  margin-bottom: var(--sp-2);
+}
+.filter-row:last-child { margin-bottom: 0; }
+.filter-label {
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 12.5px; color: var(--text-1); font-weight: 500; min-width: 100px;
+}
+.filter-label select,
+.filter-label input[type="number"],
+.filter-label input[type="date"] {
+  padding: 7px 10px; border-radius: var(--r-sm); border: 1px solid var(--line);
+  background: #fff; color: var(--text-0); font-size: 13px; outline: none;
+  min-width: 110px;
+}
+.filter-label select:focus,
+.filter-label input:focus {
+  border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.filter-actions {
+  display: flex; gap: var(--sp-2); align-items: center; margin-left: auto;
 }
 @keyframes pop { from { transform: scale(.96); opacity: .5; } to { transform: none; opacity: 1; } }
-.modal-card h3 { margin: 0 0 var(--sp-3); }
-.modal-card label { display: flex; flex-direction: column; gap: 6px;
-  font-size: 13px; color: var(--text-1); margin-bottom: var(--sp-2); }
-.modal-card input, .modal-card select {
-  padding: 10px 12px; border-radius: var(--r-sm); border: 1px solid var(--line);
-  background: #fff; color: var(--text-0); font-size: 14px; outline: none;
-}
-.modal-card input:focus, .modal-card select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
-.modal-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; margin-top: var(--sp-3); }
-.modal-actions button {
-  padding: 9px 18px; border-radius: var(--r-pill); border: 1px solid var(--line);
-  background: var(--accent); color: #fff; font-size: 14px; cursor: pointer;
-  transition: transform .18s var(--ease), box-shadow .2s var(--ease);
-}
-.modal-actions button:hover { transform: translateY(-1px); box-shadow: var(--shadow-card); }
-.modal-actions button.ghost { background: transparent; color: var(--text-1); }
-.prompt-hint { margin: 0 0 var(--sp-2); font-size: 12px; color: var(--text-1); line-height: 1.5; }
 
 /* 关于页 */
 .about { text-align: center; }

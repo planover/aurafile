@@ -26,9 +26,11 @@ try {
 const app = express();
 app.use(express.json({ limit: '5mb' }));
 // 基础安全响应头（F-10）
+// 注意：故意不设 X-Frame-Options。fnOS 桌面“窗口化打开”是用 iframe 把 app 嵌进
+// 桌面窗口（嵌入源与 app 服务跨源），若设 SAMEORIGIN/DENY，浏览器会拒绝渲染 → 打不开。
+// 对照成功案例 nasdash 同样不设该头。保留 nosniff 与 Referrer-Policy 即可。
 app.use((req, res, next) => {
   res.set('X-Content-Type-Options', 'nosniff');
-  res.set('X-Frame-Options', 'SAMEORIGIN');
   res.set('Referrer-Policy', 'no-referrer');
   next();
 });

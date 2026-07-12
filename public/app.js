@@ -1,5 +1,5 @@
 'use strict';
-// Aurafile 前端逻辑（v0.1.12 — 内联交互模式，废弃 modal 弹窗以兼容 fnOS iframe）
+// Aurafile 前端逻辑（v0.1.13 — 零 modal，纯内联交互，兼容 fnOS iframe）
 
 const $ = (s) => document.querySelector(s);
 const api = async (path, opts) => {
@@ -11,7 +11,6 @@ const api = async (path, opts) => {
 const post = (path, body) =>
   api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
-// HTML 转义，防止文件名/路径/EXIF 内容造成存储型 XSS（F-05）
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"']/g, (c) =>
     ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
@@ -25,7 +24,7 @@ let state = {
 
 const ICONS = { image: '🖼️', video: '🎬', doc: '📄', audio: '🎵', archive: '🗜️', folder: '📁', other: '📦' };
 
-// ---------- 时间轴分组 ----------
+// ---------- 时间轴 ----------
 function bucketOf(mtime) {
   const d = new Date(mtime);
   const now = new Date();
@@ -116,9 +115,7 @@ function fileCard(it) {
     `<div class="name" title="${esc(it.name)}">${esc(it.name)}</div>` +
     `<div class="meta">${it.isDir ? '文件夹' : fmtSize(it.size)} · ${fmtDate(it.mtime).slice(0, 10)}</div>`;
 
-  // 点击行为：如果正在内联编辑状态则不触发选择
   card.addEventListener('click', (e) => {
-    // 如果点击的是内联编辑的 input 或其容器，不触发选择逻辑
     if (card.classList.contains('inline-editing')) return;
     if (e.metaKey || e.ctrlKey) {
       toggleSelect(it.path, card);
@@ -177,55 +174,40 @@ async function openDetail(it) {
       const ex = await api('/api/exif?path=' + encodeURIComponent(meta.path));
       if (ex.ok && ex.tags && Object.keys(ex.tags).length) {
         let exHtml = '<h4 style="margin:16px 0 6px;color:var(--text-1)">EXIF</h4>';
-        const want = ['Make', 'Model', 'DateTimeOriginal', 'ExposureTime', 'FNumber', 'ISO', 'FocalLength', 'Software', 'Orientation', 'ImageWidth', 'ImageHeight', 'GPSLatitude', 'GPSLongitude'];
+        const want = ['Make','Model','DateTimeOriginal','ExposureTime','FNumber','ISO','FocalLength','Software','Orientation','ImageWidth','ImageHeight','GPSLatitude','GPSLongitude'];
         for (const k of want) if (ex.tags[k] != null) exHtml += kv(k, String(ex.tags[k]));
         body.insertAdjacentHTML('beforeend', exHtml);
       }
     } catch (_) {}
   }
-  // 记住最后查看的详情
   sessionStorage.setItem('lastDetail', JSON.stringify(meta));
 }
 function kv(k, v) { return `<div class="kv"><span class="k">${esc(k)}</span><span class="v">${esc(v ?? '')}</span></div>`; }
 
 // ══════════════════════════════════════════════════════════════
-// ★ 内联操作系统（v0.1.12 — 替代所有 modal 弹窗）★
+// ★ 内联操作系统（零 modal，纯文档流内交互）★
 // ══════════════════════════════════════════════════════════════
 
-/**
- * 内联重命名：将选中文件的名称变为可编辑 input
- * - Enter 确认并调用 API
- * - Escape 取消恢复原样
- * - 失焦时自动确认
- */
+/** 内联重命名：文件名变 input */
 function startInlineRename(card, path) {
-  // 清除已有的其他内联编辑
   cancelInlineEdit();
 
   const nameEl = card.querySelector('.name');
   if (!nameEl) return;
-
   const oldName = path.split('/').pop();
   nameEl.innerHTML = `<input id="__renameInput" type="text" value="${esc(oldName)}" class="inline-input" />`;
   card.classList.add('inline-editing');
 
   const inp = $('#__renameInput');
   inp.focus();
-  // 选中扩展名前的部分（类似 Finder 行为）
   const dotPos = oldName.lastIndexOf('.');
   if (dotPos > 0) { inp.setSelectionRange(0, dotPos); } else { inp.select(); }
 
   let confirmed = false;
-
   const doRename = async () => {
-    if (confirmed) return;
-    confirmed = true;
+    if (confirmed) return; confirmed = true;
     const newName = inp.value.trim();
-    if (!newName || newName === oldName) {
-      nameEl.textContent = oldName;  // 取消/无变化
-      card.classList.remove('inline-editing');
-      return;
-    }
+    if (!newName || newName === oldName) { nameEl.textContent = oldName; card.classList.remove('inline-editing'); return; }
     try {
       await post('/api/rename', { path, name: newName });
       nameEl.textContent = newName;
@@ -233,40 +215,18 @@ function startInlineRename(card, path) {
       toast(`已重命名为 ${newName}`);
       state.selected.clear(); updateToolbar();
       await loadTimeline();
-    } catch (e) {
-      nameEl.textContent = oldName;
-      card.classList.remove('inline-editing');
-      toast('重命名失败：' + e.message);
-    }
+    } catch (e) { nameEl.textContent = oldName; card.classList.remove('inline-editing'); toast('重命名失败：' + e.message); }
   };
-
-  const cancel = () => {
-    if (confirmed) return;
-    confirmed = true;
-    nameEl.textContent = oldName;
-    card.classList.remove('inline-editing');
-  };
-
-  inp.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); doRename(); }
-    if (e.key === 'Escape') { e.preventDefault(); cancel(); }
-  });
-  inp.addEventListener('blur', () => { setTimeout(doRename, 100); });  // 延迟让 click 先处理
+  const cancel = () => { if (confirmed) return; confirmed = true; nameEl.textContent = oldName; card.classList.remove('inline-editing'); };
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); doRename(); } if (e.key === 'Escape') { e.preventDefault(); cancel(); } });
+  inp.addEventListener('blur', () => { setTimeout(doRename, 100); });
 }
 
-/**
- * 内联输入条：在工具栏下方展开一个临时输入区域
- * 用于压缩包命名、格式转换等需要用户输入的操作
- * - 显示标题、提示文字、input
- * - 确定按钮直接执行操作
- * - 取消/X 关闭
- */
+/** 内联输入条（压缩/转换等） */
 let _activeInlineBar = null;
 
 function showInlineBar(title, placeholder, hint, onSubmit) {
-  cancelInlineEdit();  // 清除已有内联编辑
-
-  // 移除已有 inline bar
+  cancelInlineEdit();
   if (_activeInlineBar) { _activeInlineBar.remove(); _activeInlineBar = null; }
 
   const bar = document.createElement('div');
@@ -282,34 +242,17 @@ function showInlineBar(title, placeholder, hint, onSubmit) {
     <button id="__inlineClose" class="inline-bar-close">×</button>
   `;
 
-  // 插入到 timeline 上方（toolbar 下方）
   const tl = $('#timeline');
   tl.parentNode.insertBefore(bar, tl);
-
   _activeInlineBar = bar;
 
   const inp = $('#__inlineInput');
   requestAnimationFrame(() => { try { inp.focus(); inp.select(); } catch(_) {} });
 
   let resolved = false;
+  const submit = async () => { if (resolved) return; resolved = true; const val = inp.value.trim(); bar.remove(); _activeInlineBar = null; if (val) await onSubmit(val); };
+  const close = () => { if (resolved) return; resolved = true; bar.remove(); _activeInlineBar = null; };
 
-  const submit = async () => {
-    if (resolved) return;
-    resolved = true;
-    const val = inp.value.trim();
-    bar.remove();
-    _activeInlineBar = null;
-    if (val) await onSubmit(val);
-  };
-
-  const close = () => {
-    if (resolved) return;
-    resolved = true;
-    bar.remove();
-    _activeInlineBar = null;
-  };
-
-  // 绑定事件 — 使用多种方式确保在 fnOS iframe 中工作
   const bind = (id, fn) => {
     const el = $(id);
     if (!el) return;
@@ -317,40 +260,96 @@ function showInlineBar(title, placeholder, hint, onSubmit) {
     el.addEventListener('click', fn);
     el.addEventListener('pointerdown', function(e) { e.preventDefault(); e.stopPropagation(); fn.call(this, e); });
   };
-
   bind('#__inlineOk', submit);
   bind('#__inlineCancel', close);
   bind('#__inlineClose', close);
 
-  inp.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') { e.preventDefault(); submit(); }
-    if (e.key === 'Escape') { e.preventDefault(); close(); }
-  });
+  inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } if (e.key === 'Escape') { e.preventDefault(); close(); } });
 
-  // 点击 bar 外部区域关闭
   setTimeout(() => {
-    document.addEventListener('click', function __outsideClick(e) {
-      if (bar.contains(e.target)) return;
-      close();
-      document.removeEventListener('click', __outsideClick);
-    });
+    document.addEventListener('click', function __oc(e) { if (bar.contains(e.target)) return; close(); document.removeEventListener('click', __oc); });
   }, 50);
 }
 
-/** 取消当前的内联编辑/输入条 */
+/** 取消当前内联编辑/输入条 */
 function cancelInlineEdit() {
-  // 清除 inline rename
   const editing = document.querySelector('.file-card.inline-editing');
   if (editing) {
     editing.classList.remove('inline-editing');
     const nameEl = editing.querySelector('.name');
-    if (nameEl && nameEl.querySelector('input')) {
-      const oldName = nameEl.querySelector('input').value || '';
-      nameEl.textContent = oldName;
-    }
+    if (nameEl && nameEl.querySelector('input')) { nameEl.textContent = nameEl.querySelector('input').value || ''; }
   }
-  // 清除 inline bar
   if (_activeInlineBar) { _activeInlineBar.remove(); _activeInlineBar = null; }
+  // 同时关闭筛选栏
+  hideFilterBar();
+}
+
+// ══════════════════════════════════════════════════════════════
+// ★ 内联筛选栏（替代 filterModal）★
+// ══════════════════════════════════════════════════════════════
+let _filterBarVisible = false;
+
+/** 展开内联筛选栏 */
+function toggleFilterBar() {
+  const bar = $('#filterBar');
+
+  // 如果已有内联操作条/重命名，先关掉
+  cancelInlineEdit();
+
+  if (_filterBarVisible) {
+    // 关闭筛选栏
+    bar.classList.remove('visible');
+    _filterBarVisible = false;
+  } else {
+    // 展开：预填当前值
+    $('#fType').value = state.filters.type;
+    $('#fMin').value = state.filters.minSize != null ? state.filters.minSize : '';
+    $('#fMax').value = state.filters.maxSize != null ? state.filters.maxSize : '';
+    $('#fFrom').value = state.filters.from || '';
+    $('#fTo').value = state.filters.to || '';
+
+    bar.classList.add('visible');
+    _filterBarVisible = true;
+
+    // 自动聚焦第一个输入
+    requestAnimationFrame(() => {
+      const firstInput = bar.querySelector('input:not([type=date])');
+      if (firstInput) firstInput.focus();
+    });
+  }
+}
+
+/** 应用筛选 */
+function applyFilters() {
+  state.filters.type = $('#fType').value;
+  state.filters.minSize = $('#fMin').value ? +$('#fMin').value : null;
+  state.filters.maxSize = $('#fMax').value ? +$('#fMax').value : null;
+  state.filters.from = $('#fFrom').value || null;
+  state.filters.to = $('#fTo').value || null;
+  loadTimeline();
+  // 筛选后自动收起筛选栏
+  hideFilterBar();
+  toast('筛选已应用');
+}
+
+/** 重置筛选 */
+function resetFilters() {
+  state.filters = { q: '', type: 'all', minSize: null, maxSize: null, from: null, to: null };
+  $('#searchInput').value = '';  // 同步清空搜索框
+  $('#fType').value = 'all';
+  $('#fMin').value = '';
+  $('#fMax').value = '';
+  $('#fFrom').value = '';
+  $('#fTo').value = '';
+  hideFilterBar();
+  loadTimeline();
+  toast('已重置');
+}
+
+function hideFilterBar() {
+  const bar = $('#filterBar');
+  bar.classList.remove('visible');
+  _filterBarVisible = false;
 }
 
 // ---------- 操作 ----------
@@ -359,14 +358,11 @@ async function doAction(act) {
   if (!paths.length && !['paste', 'undo', 'redo'].includes(act)) return toast('请先选择文件');
   try {
     if (act === 'rename') {
-      // ★ 内联重命名：找到对应 card 并进入编辑模式
       const cards = document.querySelectorAll('.file-card');
       let targetCard = null;
       for (const c of cards) { if (c.dataset.path === paths[0]) { targetCard = c; break; } }
-      if (targetCard) {
-        startInlineRename(targetCard, paths[0]);
-      } else {
-        // 找不到 card 时 fallback 到 inline bar
+      if (targetCard) { startInlineRename(targetCard, paths[0]); }
+      else {
         const oldName = paths[0].split('/').pop();
         showInlineBar('重命名', oldName, '输入新的文件/文件夹名称', async (newName) => {
           await post('/api/rename', { path: paths[0], name: newName });
@@ -375,38 +371,25 @@ async function doAction(act) {
           await loadTimeline();
         });
       }
-      return;  // 不刷新列表（由回调处理）
-    } else if (act === 'copy') {
-      await post('/api/copy', { paths }); return toast('已复制');
-    } else if (act === 'cut') {
-      await post('/api/cut', { paths }); return toast('已剪切');
-    } else if (act === 'paste') {
-      await post('/api/paste', {}); return toast('已粘贴');
-    } else if (act === 'trash') {
-      for (const p of paths) await post('/api/trash', { path: p });
-      toast('已移至回收站');
-    } else if (act === 'delete') {
-      if (!confirm('彻底删除不可恢复，确定？')) return;
-      for (const p of paths) await post('/api/delete', { path: p });
-      toast('已彻底删除');
-    } else if (act === 'undo') { await post('/api/undo'); return toast('已撤销'); }
+      return;
+    } else if (act === 'copy') { await post('/api/copy', { paths }); return toast('已复制'); }
+    else if (act === 'cut') { await post('/api/cut', { paths }); return toast('已剪切'); }
+    else if (act === 'paste') { await post('/api/paste', {}); return toast('已粘贴'); }
+    else if (act === 'trash') { for (const p of paths) await post('/api/trash', { path: p }); toast('已移至回收站'); }
+    else if (act === 'delete') { if (!confirm('彻底删除不可恢复，确定？')) return; for (const p of paths) await post('/api/delete', { path: p }); toast('已彻底删除'); }
+    else if (act === 'undo') { await post('/api/undo'); return toast('已撤销'); }
     else if (act === 'redo') { await post('/api/redo'); return toast('已重做'); }
     else if (act === 'archive') {
-      // ★ 内联输入条：压缩包名称
       showInlineBar('新建压缩包', 'archive', '输入压缩包名称（不需扩展名），将创建 .zip 文件', async (name) => {
         const dest = (paths[0].includes('/') ? paths[0].slice(0, paths[0].lastIndexOf('/')) + '/' : '') + name + '.zip';
         await post('/api/archive', { format: 'zip', entries: paths, dest });
         toast('已创建压缩包 ' + name + '.zip');
         state.selected.clear(); updateToolbar();
         await loadTimeline();
-      });
-      return;
+      }); return;
     } else if (act === 'extract') {
-      const p = paths[0];
-      await post('/api/extract', { archive: p, dest: p.slice(0, p.lastIndexOf('.')) || '.' });
-      toast('已解压');
+      const p = paths[0]; await post('/api/extract', { archive: p, dest: p.slice(0, p.lastIndexOf('.')) || '.' }); toast('已解压');
     } else if (act === 'convert') {
-      // ★ 内联输入条：格式转换目标
       showInlineBar('格式转换', 'png', '输入目标格式扩展名，如 png / webp / jpg', async (target) => {
         const p = paths[0];
         const dest = p.slice(0, p.lastIndexOf('.')) + '.' + target.replace(/^\./, '');
@@ -414,18 +397,14 @@ async function doAction(act) {
         toast('已转换为 ' + target);
         state.selected.clear(); updateToolbar();
         await loadTimeline();
-      });
-      return;
+      }); return;
     } else if (act === 'details') {
       const it = JSON.parse(sessionStorage.getItem('lastDetail') || 'null') || { path: paths[0] };
-      openDetail({ ...it, path: paths[0] });
-      return;
+      openDetail({ ...it, path: paths[0] }); return;
     }
     state.selected.clear(); updateToolbar();
     await loadTimeline();
-  } catch (e) {
-    toast('操作失败：' + e.message);
-  }
+  } catch (e) { toast('操作失败：' + e.message); }
 }
 
 // ---------- Toast ----------
@@ -451,27 +430,15 @@ $('#undoBtn').onclick = () => doAction('undo');
 $('#redoBtn').onclick = () => doAction('redo');
 $('#detailClose').onclick = () => ($('#detail').hidden = true);
 
-$('#filterBtn').onclick = () => ($('#filterModal').hidden = false);
-$('#filterApply').onclick = () => {
-  state.filters.type = $('#fType').value;
-  state.filters.minSize = $('#fMin').value ? +$('#fMin').value : null;
-  state.filters.maxSize = $('#fMax').value ? +$('#fMax').value : null;
-  state.filters.from = $('#fFrom').value || null;
-  state.filters.to = $('#fTo').value || null;
-  $('#filterModal').hidden = true;
-  loadTimeline();
-};
-$('#filterReset').onclick = () => {
-  state.filters = { q: '', type: 'all', minSize: null, maxSize: null, from: null, to: null };
-  $('#filterModal').hidden = true; loadTimeline();
-};
+// ★ 筛选按钮：切换内联筛选栏（不再打开 modal）
+$('#filterBtn').onclick = () => toggleFilterBar();
+
+// ★ 内联筛选栏的按钮绑定
+$('#filterApplyBtn').onclick = () => applyFilters();
+$('#filterResetBtn').onclick = () => resetFilters();
 
 $('#aboutBtn').onclick = () => { window.location.href = '/about'; };
 
-// 筛选弹层的背景点击关闭
-document.querySelectorAll('.modal').forEach((m) =>
-  m.addEventListener('click', (e) => { if (e.target === m) m.hidden = true; })
-);
 document.addEventListener('keydown', (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); doAction('undo'); }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); doAction('redo'); }

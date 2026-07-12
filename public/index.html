@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>光匣 Aurafile · 梦幻文件管理器</title>
   <link rel="stylesheet" href="/styles.css" />
-  <!-- 完全离线：无任何外部字体/CDN/遥测请求 -->
 </head>
 <body>
   <div id="app">
@@ -17,7 +16,7 @@
 
       <div class="searchbox">
         <input id="searchInput" type="search" placeholder="搜索文件名或文件内容…" autocomplete="off" />
-        <button id="filterBtn" class="icon-btn" title="筛选">⚙</button>
+        <button id="filterBtn" class="icon-btn" title="筛选（展开/收起）">⚙</button>
       </div>
 
       <div class="top-actions">
@@ -26,6 +25,42 @@
         <button id="aboutBtn" class="icon-btn" title="关于">ℹ</button>
       </div>
     </header>
+
+    <!-- ★ 内联筛选栏（替代 filterModal，零 modal，纯文档流）★ -->
+    <div id="filterBar" class="filter-bar">
+      <div class="filter-row">
+        <label class="filter-label">类型
+          <select id="fType">
+            <option value="all">全部</option>
+            <option value="image">图片</option>
+            <option value="video">视频</option>
+            <option value="doc">文档</option>
+            <option value="audio">音频</option>
+            <option value="archive">压缩包</option>
+            <option value="other">其他</option>
+          </select>
+        </label>
+        <label class="filter-label">最小大小 (MB)
+          <input id="fMin" type="number" min="0" step="1" />
+        </label>
+        <label class="filter-label">最大大小 (MB)
+          <input id="fMax" type="number" min="0" step="1" />
+        </label>
+      </div>
+      <div class="filter-row">
+        <label class="filter-label">起始日期
+          <input id="fFrom" type="date" />
+        </label>
+        <label class="filter-label">结束日期
+          <input id="fTo" type="date" />
+        </label>
+        <div class="filter-actions">
+          <button id="filterApplyBtn" type="button" class="inline-btn primary">应用</button>
+          <button id="filterResetBtn" type="button" class="inline-btn ghost">重置</button>
+          <button id="filterCloseBtn" class="inline-bar-close">×</button>
+        </div>
+      </div>
+    </div>
 
     <section class="toolbar" id="toolbar" hidden>
       <span id="selCount" class="sel-count">已选 0 项</span>
@@ -50,35 +85,7 @@
 
     <div id="toast" class="toast" hidden></div>
 
-    <!-- 筛选弹层 -->
-    <div id="filterModal" class="modal" hidden>
-      <div class="modal-card">
-        <h3>筛选</h3>
-        <label>类型
-          <select id="fType">
-            <option value="all">全部</option>
-            <option value="image">图片</option>
-            <option value="video">视频</option>
-            <option value="doc">文档</option>
-            <option value="audio">音频</option>
-            <option value="archive">压缩包</option>
-            <option value="other">其他</option>
-          </select>
-        </label>
-        <label>最小大小 (MB)<input id="fMin" type="number" min="0" step="1" /></label>
-        <label>最大大小 (MB)<input id="fMax" type="number" min="0" step="1" /></label>
-        <label>起始日期<input id="fFrom" type="date" /></label>
-        <label>结束日期<input id="fTo" type="date" /></label>
-        <div class="modal-actions">
-          <button id="filterApply" type="button">应用</button>
-          <button id="filterReset" type="button" class="ghost">重置</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 已废弃：promptModal 弹窗。v0.1.12 起改用内联重命名 + 内联输入条（兼容 fnOS iframe） -->
-
-    <!-- 已改为独立 /about 页面，不再使用弹窗 -->
+    <!-- v0.1.13: 零 modal。所有交互均为内联/文档流内完成 -->
   </div>
 
   <script src="/app.js"></script>

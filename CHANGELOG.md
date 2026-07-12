@@ -2,6 +2,15 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.13] - 2026-07-12
+
+### Fixed
+- **fnOS 桌面「窗口化打开」白屏/打不开（根本原因）**：`server.js` 之前强制 `X-Frame-Options: SAMEORIGIN`，而 fnOS 桌面窗口用 iframe 嵌入 app 时嵌入源与 app 服务**跨源**，浏览器据此拒绝渲染 iframe。已**移除该响应头**（对齐成功案例 nasdash，其不设此头），现桌面窗口可正常内嵌渲染。
+- **fnOS 应用商店显示「停用」而非「打开」（根本原因）**：`fpk/cmd/main` 的 `status` 原用 `docker inspect` 探测容器状态，而 fnOS 执行生命周期脚本的环境可能无 docker socket 权限，导致 inspect 永远失败 → 永远返回「未运行」(exit 3) → 应用商店显示「停用」。已改为**直接探测已发布到宿主机的服务端口**（`wget`/`curl` 访问 `http://localhost:8018/api/health`），容器真实在跑即判定运行中；保留 docker inspect 作为兜底。
+
+### Changed
+- 前端全面「零 modal」：移除最后一个筛选弹窗（filterModal），改为文档流内联筛选栏（filterBar），所有交互均在正常文档流完成，彻底规避 fnOS iframe 的按钮事件拦截问题。（此前 v0.1.12 已内联化重命名/操作条，本次补齐筛选。）
+
 ## [0.1.12] - 2026-07-12
 
 ### Changed
@@ -15,7 +24,7 @@ All notable changes to Aurafile (光匣) will be documented in this file.
 - `#promptHint`、`#promptInput`、`#promptOk`、`#promptCancel` 元素移除
 
 ### Fixed
-- **fnOS 应用商店显示"停用"而非"打开"**：此问题与容器状态无关（v0.1.10/v0.1.11 日志均显示正常启动扫描），可能为 fnOS 对 Docker 应用的状态检测机制差异。本次版本通过确保 HTTP 服务稳定运行 + healthcheck 可达来改善。
+- **fnOS 应用商店显示"停用"而非"打开"**：此问题与容器状态无关（v0.1.10/v0.1.11 日志均显示正常启动扫描）。v0.1.12 的猜测性修复（"确保 HTTP 服务稳定"）**未能彻底解决**，真正的根因与修复见 v0.1.13（cmd/main 状态探测改为端口探活）。
 
 ## [0.1.11] - 2026-07-12
 

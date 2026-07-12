@@ -26,12 +26,21 @@ case "$1" in
         exit 0
         ;;
     status)
-        # 检查容器运行状态：0=运行中, 3=未运行
+        # fnOS 生命周期脚本执行环境可能无 docker socket 权限，
+        # 直接用 docker inspect 会永远判定“未运行”→ 应用商店显示“停用”。
+        # 改为探测已发布到宿主机的服务端口（compose 已把 8018 映射到 host），
+        # 容器真实在跑即可探测成功。0=运行中, 3=未运行。
+        if wget -qO- --timeout=3 "http://localhost:8018/api/health" >/dev/null 2>&1; then
+            exit 0
+        fi
+        if curl -fsS --max-time 3 "http://localhost:8018/api/health" >/dev/null 2>&1; then
+            exit 0
+        fi
+        # 兜底：保留原 docker inspect 探测（极端环境仍可用）
         if is_docker_running; then
             exit 0
-        else
-            exit 3
         fi
+        exit 3
         ;;
     *)
         exit 1
