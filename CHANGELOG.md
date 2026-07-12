@@ -2,6 +2,23 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.11] - 2026-07-12
+
+### Fixed
+- **输入弹窗（promptModal）按钮在 fnOS 真机 iframe 中仍无响应（v0.1.9 加固未彻底解决）**：v0.1.9 虽已加 `preventDefault` + `stopPropagation`，但 fnOS 桌面窗口的 WebView/iframe 嵌入环境中，仅靠 `onclick` 属性赋值 + 单一 click 事件仍不够可靠（可能被框架层截获、或 WebView 的 onclick setter 行为异常）。现已实施**三重事件绑定保险**：
+  - `onclick` 属性赋值（原始方式）
+  - `addEventListener('click', ...)` （标准 DOM 事件）
+  - `addEventListener('pointerdown', ...)` + `touchend`（指针/触摸设备兜底）
+  - **modal-card 事件委托**（capture 阶段拦截，作为最终保底）
+  - 防重复触发锁（`resolved` 标志）
+  - 延迟 focus（`requestAnimationFrame`，确保 modal 已渲染）
+
+- **弹窗缺少操作上下文提示**：原弹窗标题只显示「输入」或「重命名为」，用户不知道当前在执行什么操作、该输入什么内容。现增加第三个参数 `hint`，每个调用点传入明确的引导文字：
+  - 重命名：显示「输入新的文件/文件夹名称」，默认值填充当前文件名
+  - 压缩：显示「输入压缩包名称（不需扩展名），将创建 .zip 文件」
+  - 格式转换：显示「输入目标格式扩展名，如 png / webp / jpg」
+  - HTML 新增 `<p id="promptHint">` 提示文字区域，带次要色样式
+
 ## [0.1.10] - 2026-07-12
 
 ### Fixed

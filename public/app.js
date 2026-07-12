@@ -188,7 +188,8 @@ async function doAction(act) {
   if (!paths.length && !['paste', 'undo', 'redo'].includes(act)) return toast('请先选择文件');
   try {
     if (act === 'rename') {
-      const name = await promptText('重命名为', paths[0].split('/').pop());
+      const oldName = paths[0].split('/').pop();
+      const name = await promptText('重命名', oldName, '输入新的文件/文件夹名称');
       if (!name) return;
       await post('/api/rename', { path: paths[0], name });
     } else if (act === 'copy') {
@@ -207,7 +208,7 @@ async function doAction(act) {
     } else if (act === 'undo') { await post('/api/undo'); return toast('已撤销'); }
     else if (act === 'redo') { await post('/api/redo'); return toast('已重做'); }
     else if (act === 'archive') {
-      const name = await promptText('压缩包名称（不含扩展名）', 'archive');
+      const name = await promptText('压缩包名称', 'archive', '输入压缩包名称（不需扩展名），将创建 .zip 文件');
       if (!name) return;
       const fmt = 'zip';
       await post('/api/archive', { format: fmt, entries: paths, dest: (paths[0].includes('/') ? paths[0].slice(0, paths[0].lastIndexOf('/')) + '/' : '') + name + '.' + fmt });
@@ -217,7 +218,7 @@ async function doAction(act) {
       await post('/api/extract', { archive: p, dest: p.slice(0, p.lastIndexOf('.')) || '.' });
       toast('已解压');
     } else if (act === 'convert') {
-      const target = await promptText('转换目标扩展名（如 png/webp/jpg）', 'png');
+      const target = await promptText('格式转换', 'png', '输入目标格式扩展名，如 png / webp / jpg');
       if (!target) return;
       const p = paths[0];
       const dest = p.slice(0, p.lastIndexOf('.')) + '.' + target.replace(/^\./, '');
@@ -235,21 +236,61 @@ async function doAction(act) {
   }
 }
 
-// ---------- 通用弹层 ----------
-function promptText(title, def) {
+// ---------- 通用弹层（三重事件绑定 + 事件委托，应对 fnOS iframe 环境） ----------
+function promptText(title, def, hint) {
   return new Promise((res) => {
     const m = $('#promptModal');
-    $('#promptTitle').textContent = title;
+    $('#promptTitle').textContent = title || '输入';
     const inp = $('#promptInput');
     inp.value = def || '';
-    m.hidden = false; inp.focus(); inp.select();
-    // 用 IIFE 包裹确保 e 对象可用；preventDefault + stopPropagation 防 iframe 干扰
-    const ok = (e) => { e.preventDefault(); e.stopPropagation(); m.hidden = true; res(inp.value.trim()); };
-    const cancel = (e) => { e.preventDefault(); e.stopPropagation(); m.hidden = true; res(null); };
-    const bind = (id, fn) => { const el = $(id); el.onclick = fn; };  // 保持 onclick + 带 event 参数
-    bind('#promptOk', ok);
-    bind('#promptCancel', cancel);
-    inp.onkeydown = (e) => { if (e.key === 'Enter') ok(e); if (e.key === 'Escape') cancel(e); };
+    // 设置提示文字
+    const hintEl = $('#promptHint');
+    if (hintEl) { hintEl.textContent = hint || ''; hintEl.hidden = !hint; }
+    m.hidden = false;
+    // 延迟 focus，确保 modal 已显示（某些 WebView 需要）
+    requestAnimationFrame(() => { try { inp.focus(); inp.select(); } catch(_) {} });
+
+    let resolved = false;
+    const resolve = (val) => {
+      if (resolved) return;  // 防重复触发
+      resolved = true;
+      m.hidden = true;
+      res(val);
+    };
+
+    // 统一事件处理函数
+    const onOk = (e) => { if (e) { e.preventDefault(); e.stopPropagation(); } resolve(inp.value.trim()); };
+    const onCancel = (e) => { if (e) { e.preventDefault(); e.stopPropagation(); } resolve(null); };
+
+    // 三重绑定：onclick + click 事件 + pointerdown（覆盖 fnOS iframe 各种场景）
+    const bindBtn = (id, fn) => {
+      const el = $(id);
+      if (!el) { console.error('[Aurafile] promptText: 找不到元素', id); return; }
+      el.onclick = fn;
+      el.addEventListener('click', fn);
+      el.addEventListener('pointerdown', (e) => { e.preventDefault(); e.stopPropagation(); fn(e); });
+      // 触摸设备兼容
+      el.addEventListener('touchend', (e) => { e.preventDefault(); fn(e); });
+    };
+    bindBtn('#promptOk', onOk);
+    bindBtn('#promptCancel', onCancel);
+
+    // 键盘支持
+    inp.onkeydown = (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); onOk(e); }
+      if (e.key === 'Escape') { e.preventDefault(); onCancel(e); }
+    };
+
+    // 事件委托兜底：如果上述绑定都失效，通过 modal-card 的冒泡捕获
+    const card = m.querySelector('.modal-card');
+    if (card && !card._promptDelegate) {
+      card._promptDelegate = true;
+      card.addEventListener('click', (e) => {
+        const t = e.target;
+        if (t.closest('#promptOk')) { e.preventDefault(); e.stopPropagation(); onOk(e); }
+        else if (t.closest('#promptCancel')) { e.preventDefault(); e.stopPropagation(); onCancel(e); }
+      }, true);  // capture 阶段拦截
+    }
   });
 }
 

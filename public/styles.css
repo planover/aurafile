@@ -198,6 +198,7 @@ body {
 }
 .modal-actions button:hover { transform: translateY(-1px); box-shadow: var(--shadow-card); }
 .modal-actions button.ghost { background: transparent; color: var(--text-1); }
+.prompt-hint { margin: 0 0 var(--sp-2); font-size: 12px; color: var(--text-1); line-height: 1.5; }
 
 /* 关于页 */
 .about { text-align: center; }
