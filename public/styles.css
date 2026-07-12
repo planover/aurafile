@@ -244,3 +244,49 @@ body {
   font-size: 13px; box-shadow: var(--shadow-soft); z-index: 60; animation: pop .24s var(--ease);
 }
 .empty { text-align: center; color: var(--text-1); padding: var(--sp-4); }
+
+/* ═══ 内联编辑系统（v0.1.12 — 替代 modal 弹窗） ═══ */
+.file-card.inline-editing { outline: 2px solid var(--accent); outline-offset: 2px; }
+.file-card.inline-editing .name { padding: 0; }
+
+.inline-input {
+  width: 100%; padding: 4px 8px; border-radius: var(--r-sm);
+  border: 2px solid var(--accent); background: #fff;
+  font-size: 13px; font-family: inherit; color: var(--text-0);
+  outline: none; box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* 内联操作条（压缩/转换等） */
+.inline-action-bar {
+  display: flex; align-items: center; gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4); margin-bottom: var(--sp-2);
+  background: var(--surface-strong); border: 1px solid var(--accent);
+  border-radius: var(--r-lg); box-shadow: var(--shadow-card);
+  animation: pop .22s var(--ease);
+  flex-wrap: wrap;
+}
+.inline-bar-title {
+  font-weight: 600; font-size: 14px; color: var(--text-0);
+  white-space: nowrap;
+}
+.inline-bar-hint {
+  font-size: 11.5px; color: var(--text-1); white-space: nowrap;
+}
+.inline-action-bar input {
+  flex: 1; min-width: 140px; padding: 8px 12px;
+  border-radius: var(--r-sm); border: 1px solid var(--line);
+  background: #fff; color: var(--text-0); font-size: 14px; outline: none;
+}
+.inline-action-bar input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.inline-btn {
+  padding: 7px 16px; border-radius: var(--r-pill); border: 1px solid var(--line);
+  background: var(--accent); color: #fff; font-size: 13px; cursor: pointer;
+  white-space: nowrap; transition: transform .18s, box-shadow .2s;
+}
+.inline-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-card); }
+.inline-btn.ghost { background: transparent; color: var(--text-1); }
+.inline-bar-close {
+  border: none; background: none; font-size: 20px; color: var(--text-tertiary);
+  cursor: pointer; padding: 4px; margin-left: auto;
+}
+.inline-bar-close:hover { color: var(--danger); }

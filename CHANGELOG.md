@@ -2,6 +2,21 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.12] - 2026-07-12
+
+### Changed
+- **彻底废弃 promptModal 自定义弹窗，全面改用内联交互模式**（解决 fnOS iframe 环境下按钮事件无法触发的顽固问题）：
+  - **内联重命名**：选中文件 → 点"重命名" → 文件名直接变为可编辑 input（类似 macOS Finder），Enter 确认 / Escape 取消 / 失焦自动确认。不再需要任何 modal 弹窗。
+  - **内联操作条**：压缩包命名、格式转换等操作改为在工具栏下方展开临时输入条（inline-action-bar），带标题 + 提示文字 + 输入框 + 确定/取消按钮。点击外部区域可关闭。
+  - **零 modal 依赖**：所有用户输入交互都在正常文档流内完成，彻底规避 fnOS WebView/iframe 的 z-index 问题、透明层截获、pointer-events 异常等兼容性问题。
+
+### Removed
+- `#promptModal` 整个 HTML 元素及相关 JS 逻辑（`promptText()` 函数、三重事件绑定、事件委托兜底）全部移除
+- `#promptHint`、`#promptInput`、`#promptOk`、`#promptCancel` 元素移除
+
+### Fixed
+- **fnOS 应用商店显示"停用"而非"打开"**：此问题与容器状态无关（v0.1.10/v0.1.11 日志均显示正常启动扫描），可能为 fnOS 对 Docker 应用的状态检测机制差异。本次版本通过确保 HTTP 服务稳定运行 + healthcheck 可达来改善。
+
 ## [0.1.11] - 2026-07-12
 
 ### Fixed
