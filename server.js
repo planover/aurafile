@@ -145,9 +145,10 @@ app.get('/api/search', asyncH(async (req, res) => {
   res.json({ ok: true, items: result.rows, total: result.total });
 }));
 
-// 已索引文件数（让用户确认“文件都被识别到了”）
+// 已索引统计（v0.1.16：文件 + 目录）
 app.get('/api/stats', asyncH(async (req, res) => {
-  res.json({ ok: true, files: db.count(), dirs: -1 });
+  const s = db.stats();
+  res.json({ ok: true, files: s.files, dirs: s.dirs, total: s.total });
 }));
 
 app.get('/api/file', asyncH(async (req, res) => {
@@ -158,7 +159,7 @@ app.get('/api/file', asyncH(async (req, res) => {
 // ---------- 文件操作 ----------
 app.post('/api/rename', asyncH(async (req, res) => {
   const r = await fsops.rename(req.body.path, req.body.name);
-  await indexer.indexFile(fsops.resolveSafe(r.path));
+  await indexer.indexItem(fsops.resolveSafe(r.path)); // v0.1.16：目录重命名后按类型重新入库
   res.json({ ok: true, ...r });
 }));
 
@@ -249,7 +250,7 @@ app.post('/api/convert', asyncH(async (req, res) => {
     req.body.target,
     fsops.resolveSafe(req.body.dest)
   );
-  await indexer.indexFile(fsops.resolveSafe(req.body.dest));
+  await indexer.indexItem(fsops.resolveSafe(req.body.dest)); // v0.1.16：按类型派发（目录/文件）
   res.json({ ok: true, ...r });
 }));
 

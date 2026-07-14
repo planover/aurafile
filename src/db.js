@@ -25,6 +25,7 @@ function init() {
       mtime     INTEGER,
       ctime     INTEGER,
       mode      INTEGER,
+      isDir     INTEGER NOT NULL DEFAULT 0,  -- v0.1.16：是否为目录（目录名也可被搜索，Everything 式）
       indexed_at INTEGER
     );
     CREATE INDEX IF NOT EXISTS idx_files_kind ON files(kind);
@@ -37,6 +38,14 @@ function init() {
       tokenize = 'unicode61'
     );
   `);
+  // v0.1.16：目录名可搜索。兼容旧库——若 files 表缺 isDir 列则补齐（ALTER 不破坏已有数据）。
+  // 新库已在 CREATE 中加入该列；此处仅对升级用户生效。
+  const _fileCols = db.pragma('table_info(files)');
+  if (!_fileCols.some((c) => c.name === 'isDir')) {
+    db.exec('ALTER TABLE files ADD COLUMN isDir INTEGER NOT NULL DEFAULT 0');
+    // 旧库曾把目录以 kind='folder' 入库但未标 isDir，补齐标记使其可被搜索
+    db.exec("UPDATE files SET isDir = 1 WHERE kind = 'folder'");
+  }
   return db;
 }
 
@@ -59,13 +68,14 @@ function upsert(meta) {
   const d = getDb();
   const ext = path.extname(meta.path).replace(/^\./, '');
   const kind = meta.kind || kindOf(ext);
+  const isDir = meta.isDir ? 1 : 0;
   const now = Date.now();
   d.prepare(
-    `INSERT INTO files (path, name, ext, kind, size, mtime, ctime, mode, indexed_at)
-     VALUES (@path, @name, @ext, @kind, @size, @mtime, @ctime, @mode, @indexed_at)
+    `INSERT INTO files (path, name, ext, kind, size, mtime, ctime, mode, isDir, indexed_at)
+     VALUES (@path, @name, @ext, @kind, @size, @mtime, @ctime, @mode, @isDir, @indexed_at)
      ON CONFLICT(path) DO UPDATE SET
-       name=@name, ext=@ext, kind=@kind, size=@size, mtime=@mtime, ctime=@ctime, mode=@mode, indexed_at=@indexed_at`
-  ).run({ ...meta, ext, kind, indexed_at: now });
+       name=@name, ext=@ext, kind=@kind, size=@size, mtime=@mtime, ctime=@ctime, mode=@mode, isDir=@isDir, indexed_at=@indexed_at`
+  ).run({ ...meta, ext, kind, isDir, indexed_at: now });
 
   if (typeof meta.content === 'string') {
     d.prepare('DELETE FROM fts WHERE path = ?').run(meta.path);
@@ -141,7 +151,8 @@ function search({ text, type, minSize, maxSize, from, to, content = false, limit
   let sql = 'SELECT f.* FROM files f';
   if (joinFts) sql += ' LEFT JOIN fts ON f.path = fts.path';
   sql += ' WHERE ' + conds.join(' AND ');
-  sql += ' ORDER BY f.mtime DESC LIMIT ? OFFSET ?';
+  // v0.1.16：目录排在文件前（与 Everything 一致），再按修改时间倒序
+  sql += ' ORDER BY f.isDir DESC, f.mtime DESC LIMIT ? OFFSET ?';
   const rows = d.prepare(sql).all(...params, limit, offset);
 
   // 总数（复用车条件，不含 LIMIT/OFFSET）
@@ -157,9 +168,17 @@ function count() {
   return getDb().prepare('SELECT COUNT(*) AS c FROM files').get().c;
 }
 
+// v0.1.16：已索引统计（文件 + 目录）
+function stats() {
+  const d = getDb();
+  const files = d.prepare("SELECT COUNT(*) AS c FROM files WHERE isDir = 0 OR isDir IS NULL").get().c;
+  const dirs = d.prepare('SELECT COUNT(*) AS c FROM files WHERE isDir = 1').get().c;
+  return { files, dirs, total: files + dirs };
+}
+
 function clearAll() {
   const d = getDb();
   d.exec('DELETE FROM files; DELETE FROM fts;');
 }
 
-module.exports = { init, getDb, upsert, remove, get, timeline, search, count, clearAll, kindOf };
+module.exports = { init, getDb, upsert, remove, get, timeline, search, count, stats, clearAll, kindOf };

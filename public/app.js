@@ -110,7 +110,7 @@ function renderGroups(items) {
 
 function fileCard(it) {
   const card = document.createElement('div');
-  card.className = 'file-card' + (state.selected.has(it.path) ? ' selected' : '');
+  card.className = 'file-card' + (it.isDir ? ' is-dir' : '') + (state.selected.has(it.path) ? ' selected' : '');
   card.dataset.path = it.path;
   const icon = ICONS[it.kind] || ICONS.other;
   let inner;
@@ -129,7 +129,7 @@ function fileCard(it) {
     if (e.metaKey || e.ctrlKey) {
       toggleSelect(it.path, card);
     } else if (it.isDir) {
-      openDetail(it);
+      enterBrowse(it.path); // v0.1.16：搜索结果里的文件夹 → 直接进入该目录浏览
     } else {
       selectOnly(it.path, card);
     }
@@ -147,8 +147,10 @@ function fileCard(it) {
 async function loadStats() {
   try {
     const r = await api('/api/stats');
-    const n = (r.files || 0).toLocaleString();
-    $('#stats').textContent = `已索引 ${n} 个文件（按 📁 浏览可逐目录查看全部）`;
+    const total = (r.total != null ? r.total : (r.files || 0)).toLocaleString();
+    const files = (r.files || 0).toLocaleString();
+    const dirs = (r.dirs || 0).toLocaleString();
+    $('#stats').textContent = `已索引 ${total} 项（文件 ${files} · 文件夹 ${dirs}），按 📁 浏览可逐目录查看`;
   } catch (_) {
     $('#stats').textContent = '';
   }
@@ -213,7 +215,7 @@ function renderBrowser(items) {
   grid.className = 'tl-grid';
   for (const it of items) {
     const card = document.createElement('div');
-    card.className = 'file-card';
+    card.className = 'file-card' + (it.isDir ? ' is-dir' : '');
     const icon = ICONS[it.kind] || ICONS.other;
     const thumb = (it.kind === 'image' || it.kind === 'video')
       ? `<div class="thumb"><img loading="lazy" src="/api/thumbnail?path=${encodeURIComponent(it.path)}&w=320" onerror="this.parentNode.textContent='${icon}'"></div>`

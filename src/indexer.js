@@ -51,27 +51,72 @@ async function indexFile(filePath) {
   });
 }
 
+// v0.1.16：索引目录本身，使目录名也可被搜索（Everything 式）。
+// 目录无内容抽取、无扩展名；size 记为 0，mtime 取目录本身 mtime。
+async function indexDir(dirPath) {
+  let stat;
+  try {
+    stat = await fs.stat(dirPath);
+  } catch (_) {
+    return;
+  }
+  if (!stat.isDirectory()) return;
+  const rel = path.relative(cfg.ROOT, dirPath);
+  if (rel.startsWith('..')) return;
+  db.upsert({
+    path: dirPath,
+    name: path.basename(dirPath),
+    kind: 'folder',
+    size: 0,
+    mtime: Math.floor(stat.mtimeMs),
+    ctime: Math.floor(stat.ctimeMs),
+    mode: stat.mode,
+    isDir: 1,
+  });
+}
+
+// 按实际类型派发：目录走 indexDir，文件走 indexFile（用于重命名/转换等回调）
+async function indexItem(p) {
+  let stat;
+  try {
+    stat = await fs.stat(p);
+  } catch (_) {
+    return;
+  }
+  if (stat.isDirectory()) return indexDir(p);
+  return indexFile(p);
+}
+
 async function unindex(filePath) {
   db.remove(filePath);
 }
 
 // 初始全量扫描：分批 + 让出事件循环 + 错误隔离，避免大 NAS 上 OOM 被 kill 导致容器无限重启
 const SCAN_BATCH = 200;        // 每批索引文件数
+const SCAN_DIR_BATCH = 200;    // 每批索引目录数（v0.1.16 新增：目录也入库）
 const SCAN_YIELD_MS = 5;       // 每批后让出事件循环，给 GC 与 IO 喘息
 const SCAN_MAX_DEPTH = 25;     // 目录递归深度上限，防极深目录栈溢出
-const SCAN_MAX_FILES = 500000; // 全量扫描文件数上限，超出则停止（依赖 watcher 增量补充）
+const SCAN_MAX_FILES = 3000000; // 全量扫描文件数上限（v0.1.15：原 50万 不够，用户 /data 已有 52.7万文件被漏扫 2.7万；提到 300万留足余量）
+const SCAN_MAX_DIRS = 3000000;  // 全量扫描目录数上限（v0.1.16 新增：目录名也需入库，单独预算避免目录数挤掉文件）
 
 async function initialScan() {
   let pending = [];
-  let total = 0;
+  let pendingDirs = [];
+  let fileTotal = 0;
+  let dirTotal = 0;
   const flush = async () => {
     const batch = pending;
     pending = [];
     // 并发写入本批，单个失败不影响整体
     await Promise.all(batch.map((f) => indexFile(f).catch(() => {})));
   };
+  const flushDirs = async () => {
+    const batch = pendingDirs;
+    pendingDirs = [];
+    await Promise.all(batch.map((d) => indexDir(d).catch(() => {})));
+  };
   const walk = async (dir, depth) => {
-    if (total >= SCAN_MAX_FILES) return;
+    if (fileTotal >= SCAN_MAX_FILES && dirTotal >= SCAN_MAX_DIRS) return;
     if (depth > SCAN_MAX_DEPTH) return;
     let entries;
     try {
@@ -83,22 +128,33 @@ async function initialScan() {
       const full = path.join(dir, e.name);
       if (e.isDirectory()) {
         if (isExcluded(full)) continue;
+        // v0.1.16：索引目录本身（目录名可搜索），与文件分开预算，互不挤占
+        if (dirTotal < SCAN_MAX_DIRS) {
+          pendingDirs.push(full);
+          dirTotal++;
+          if (pendingDirs.length >= SCAN_DIR_BATCH) {
+            await flushDirs();
+            await new Promise((r) => setTimeout(r, SCAN_YIELD_MS)); // 让出事件循环，避免内存累积 OOM
+          }
+        }
         await walk(full, depth + 1);
       } else if (e.isFile()) {
+        if (fileTotal >= SCAN_MAX_FILES) continue;
         pending.push(full);
-        total++;
+        fileTotal++;
         if (pending.length >= SCAN_BATCH) {
           await flush();
           await new Promise((r) => setTimeout(r, SCAN_YIELD_MS)); // 让出事件循环，避免内存累积 OOM
         }
       }
-      if (total >= SCAN_MAX_FILES) return;
+      if (fileTotal >= SCAN_MAX_FILES && dirTotal >= SCAN_MAX_DIRS) return;
     }
   };
   try {
     await walk(cfg.ROOT, 0);
     await flush();
-    console.log(`[Aurafile] 初始索引完成：扫描 ${total} 个文件`);
+    await flushDirs();
+    console.log(`[Aurafile] 初始索引完成：扫描 ${fileTotal} 个文件，${dirTotal} 个目录`);
   } catch (e) {
     // 扫描失败不得让进程崩溃——服务仍应正常起来，依赖 watcher 增量补充
     console.error('[Aurafile] 初始索引部分失败（已跳过，服务继续）：', e.message);
@@ -113,7 +169,9 @@ function flush() {
   const batch = [...pending];
   pending.clear();
   for (const f of batch) {
-    if (f.action === 'unlink') unindex(f.path);
+    if (f.action === 'unlinkDir') unindex(f.path);
+    else if (f.action === 'addDir') indexDir(f.path); // v0.1.16：新目录入库，使其可被搜索
+    else if (f.action === 'unlink') unindex(f.path);
     else indexFile(f.path);
   }
 }
@@ -141,8 +199,8 @@ function start() {
           .on('add', (p) => schedule(p, 'add'))
           .on('change', (p) => schedule(p, 'change'))
           .on('unlink', (p) => schedule(p, 'unlink'))
-          .on('addDir', () => {})
-          .on('unlinkDir', (p) => {});
+          .on('addDir', (p) => schedule(p, 'addDir'))       // v0.1.16：新目录入库
+          .on('unlinkDir', (p) => schedule(p, 'unlinkDir')); // v0.1.16：删除目录同步移除
       } catch (e) {
         console.error('[Aurafile] 文件监听启动失败（增量索引不可用，但 HTTP 服务正常）：', e.message);
       }
@@ -154,4 +212,4 @@ function stop() {
   if (watcher) watcher.close();
 }
 
-module.exports = { start, stop, indexFile, unindex, initialScan };
+module.exports = { start, stop, indexFile, indexDir, indexItem, unindex, initialScan };
