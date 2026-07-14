@@ -1,6 +1,6 @@
 {
   "name": "aurafile",
-  "version": "0.1.16",
+  "version": "0.1.17",
   "private": true,
   "description": "Aurafile — 梦幻柔和的离线 NAS 文件管理器（Docker / fnOS fpk）",
   "main": "server.js",

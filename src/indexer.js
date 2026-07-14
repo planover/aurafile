@@ -115,9 +115,28 @@ async function initialScan() {
     pendingDirs = [];
     await Promise.all(batch.map((d) => indexDir(d).catch(() => {})));
   };
-  const walk = async (dir, depth) => {
+  // v0.1.17：支持符号链接。lstat 语义下 e.isDirectory() 对「指向目录的软链」为 false，
+  // 软链目录既不会被 indexDir 入库、也不会被递归进其下内容，导致搜不到。改为：
+  //   普通目录/文件 → 与 v0.1.16 完全一致；
+  //   符号链接 → fs.stat 跟随判断真实类型，目录按目录处理、文件按文件处理；
+  //   断链/无权限 → continue 跳过。
+  // 循环保护：visited 存已递归目录的 realpath。普通目录不做额外 syscall（性能），
+  // 仅「经软链进入的目录」才用 realpath 校验（软链在实际 NAS 上很少）。A→B→A 环
+  // 在第二次遇到已访问 realpath 时只索引不递归，避免死循环/栈溢出。
+  const walk = async (dir, depth, visited, viaSymlink) => {
     if (fileTotal >= SCAN_MAX_FILES && dirTotal >= SCAN_MAX_DIRS) return;
     if (depth > SCAN_MAX_DEPTH) return;
+    // 仅经软链进入的目录做环检测（realpath 开销只发生在软链上）
+    if (viaSymlink) {
+      let realDir;
+      try {
+        realDir = await fs.realpath(dir);
+      } catch (_) {
+        realDir = dir; // 极端断链：退回原始路径，至少本次能跑完
+      }
+      if (visited.has(realDir)) return; // 环：已递归过，仅索引上层、不向下
+      visited.add(realDir);
+    }
     let entries;
     try {
       entries = await fs.readdir(dir, { withFileTypes: true });
@@ -137,7 +156,7 @@ async function initialScan() {
             await new Promise((r) => setTimeout(r, SCAN_YIELD_MS)); // 让出事件循环，避免内存累积 OOM
           }
         }
-        await walk(full, depth + 1);
+        await walk(full, depth + 1, visited, false);
       } else if (e.isFile()) {
         if (fileTotal >= SCAN_MAX_FILES) continue;
         pending.push(full);
@@ -146,12 +165,47 @@ async function initialScan() {
           await flush();
           await new Promise((r) => setTimeout(r, SCAN_YIELD_MS)); // 让出事件循环，避免内存累积 OOM
         }
+      } else if (e.isSymbolicLink()) {
+        // v0.1.17：跟随软链判定真实类型；断链/无权限则跳过
+        let st;
+        try {
+          st = await fs.stat(full); // 跟随软链
+        } catch (_) {
+          continue;
+        }
+        if (st.isDirectory()) {
+          if (!isExcluded(full)) {
+            // 索引软链目录自身（path 存软链路径如 /data/link，使搜索该软链名可命中）
+            if (dirTotal < SCAN_MAX_DIRS) {
+              pendingDirs.push(full);
+              dirTotal++;
+              if (pendingDirs.length >= SCAN_DIR_BATCH) {
+                await flushDirs();
+                await new Promise((r) => setTimeout(r, SCAN_YIELD_MS));
+              }
+            }
+            // 环检测：仅当真实目录未访问过才递归其内部（防 A→B→A 死循环）
+            let realFull;
+            try { realFull = await fs.realpath(full); } catch (_) { realFull = full; }
+            if (!visited.has(realFull)) {
+              await walk(full, depth + 1, visited, true);
+            }
+          }
+        } else if (st.isFile()) {
+          if (fileTotal >= SCAN_MAX_FILES) continue;
+          pending.push(full);
+          fileTotal++;
+          if (pending.length >= SCAN_BATCH) {
+            await flush();
+            await new Promise((r) => setTimeout(r, SCAN_YIELD_MS));
+          }
+        }
       }
       if (fileTotal >= SCAN_MAX_FILES && dirTotal >= SCAN_MAX_DIRS) return;
     }
   };
   try {
-    await walk(cfg.ROOT, 0);
+    await walk(cfg.ROOT, 0, new Set(), false);
     await flush();
     await flushDirs();
     console.log(`[Aurafile] 初始索引完成：扫描 ${fileTotal} 个文件，${dirTotal} 个目录`);
@@ -192,6 +246,7 @@ function start() {
           ignoreInitial: true,
           ignored: (p) => isExcluded(p),
           depth: 20,
+          followSymlinks: true, // v0.1.17：让新建软链目录触发 addDir→入库、删除触发 unlinkDir→移除
           persistent: true,
         });
         watcher

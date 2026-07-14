@@ -160,6 +160,7 @@ function enterBrowse(p) {
   state.mode = 'browse';
   state.browsePath = p || '/data';
   $('#timeline').hidden = true;
+  $('#tlFilter').hidden = true; // 分段筛选仅时间轴视图相关，浏览态隐藏
   $('#browser').hidden = false;
   $('#pathbar').hidden = false;
   loadBrowse(state.browsePath);
@@ -168,6 +169,7 @@ function enterBrowse(p) {
 function exitBrowse() {
   state.mode = 'timeline';
   $('#timeline').hidden = false;
+  $('#tlFilter').hidden = false;
   $('#browser').hidden = true;
   $('#pathbar').hidden = true;
   loadTimeline();
@@ -598,6 +600,21 @@ $('#browseBtn').onclick = () => {
 // ★ 筛选按钮：切换内联筛选栏（不再打开 modal）
 $('#filterBtn').onclick = () => toggleFilterBar();
 
+// ★ 时间轴分段筛选：全部 / 仅文件 / 仅文件夹（v0.1.17）
+// 设置 state.filters.type 后走 /api/search（type 带上），由 loadTimeline 决定视图
+document.querySelectorAll('#tlFilter .seg').forEach((b) => {
+  b.addEventListener('click', () => {
+    state.filters.type = b.dataset.type;
+    syncTlFilter();
+    loadTimeline();
+  });
+});
+function syncTlFilter() {
+  document.querySelectorAll('#tlFilter .seg').forEach((b) => {
+    b.classList.toggle('active', b.dataset.type === state.filters.type);
+  });
+}
+
 // ★ 内联筛选栏的按钮绑定
 $('#filterApplyBtn').onclick = () => applyFilters();
 $('#filterResetBtn').onclick = () => resetFilters();
@@ -614,4 +631,5 @@ document.addEventListener('keydown', (e) => {
 // ---------- 启动 ----------
 loadStats();
 setInterval(loadStats, 15000); // 索引进行中时实时反映进度
+syncTlFilter(); // v0.1.17：高亮默认「全部」
 loadTimeline();

@@ -365,3 +365,24 @@ body {
 }
 .browser { padding: 16px; min-height: 200px; }
 
+/* ★ 时间轴分段筛选：全部 / 仅文件 / 仅文件夹（v0.1.17）★ */
+.tl-filter {
+  display: flex; gap: 4px; align-items: center;
+  padding: 8px 16px;
+  background: var(--bg-0);
+  border-bottom: 1px solid var(--line);
+}
+.tl-filter .seg {
+  padding: 7px 16px; border-radius: var(--r-pill);
+  border: 1px solid var(--line); background: var(--surface-strong);
+  color: var(--text-1); font-size: 13px; font-family: inherit; cursor: pointer;
+  transition: transform .18s var(--ease), background .2s var(--ease),
+    color .2s var(--ease), border-color .2s var(--ease), box-shadow .2s var(--ease);
+}
+.tl-filter .seg:hover { transform: translateY(-1px); box-shadow: var(--shadow-card); color: var(--text-0); }
+.tl-filter .seg:active { transform: scale(.97); }
+.tl-filter .seg.active {
+  background: var(--accent); color: #fff; border-color: transparent;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+

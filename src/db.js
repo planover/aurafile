@@ -136,8 +136,16 @@ function search({ text, type, minSize, maxSize, from, to, content = false, limit
     conds.push('(' + parts.join(' OR ') + ')');
   }
   if (type && type !== 'all') {
-    conds.push('f.kind = ?');
-    params.push(type);
+    // v0.1.17：时间轴分段「仅文件 / 仅文件夹」按 isDir 判定；
+    // 其余 MIME 类型（image/video/doc/…）仍按 kind 过滤（来自筛选栏）。
+    if (type === 'folder') {
+      conds.push('f.isDir = 1');
+    } else if (type === 'file') {
+      conds.push('f.isDir = 0');
+    } else {
+      conds.push('f.kind = ?');
+      params.push(type);
+    }
   }
   if (minSize != null) {
     conds.push('f.size >= ?');

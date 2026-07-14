@@ -2,6 +2,11 @@
 
 All notable changes to Aurafile (光匣) will be documented in this file.
 
+## [0.1.17] - 2026-07-14
+- 符号链接目录现在也会被索引：指向目录的软链可像真实目录一样被搜索、可点击进入浏览（带 realpath 循环保护，防 A→B→A 死循环）
+- 时间线视图新增「全部 / 仅文件 / 仅文件夹」分段切换，一键只看文件或只看文件夹
+- 修复 `type=file` 搜索条件误用 kind='file' 导致「仅文件」筛选失效的 bug
+
 ## [0.1.16] - 2026-07-14
 
 ### Added
