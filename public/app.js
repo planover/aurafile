@@ -19,6 +19,8 @@ function esc(s) {
 
 let state = {
   selected: new Set(),
+  mode: 'timeline',
+  browsePath: '/data',
   filters: { q: '', type: 'all', minSize: null, maxSize: null, from: null, to: null },
 };
 
@@ -69,9 +71,14 @@ async function loadTimeline() {
     if (f.to) q.set('to', new Date(f.to).getTime() + 86400000);
     const r = await api('/api/search?' + q.toString());
     items = r.items.map((x) => ({ ...x, mtime: x.mtime }));
+    const total = r.total != null ? r.total : items.length;
+    tl.dataset.total = total;
+    const head = `<div class="result-head">找到 ${total.toLocaleString()} 个匹配结果${f.q ? `（关键词「${esc(f.q)}」）` : ''}</div>`;
+    tl.innerHTML = head;
   } else {
     const r = await api('/api/timeline?limit=800');
     items = r.items;
+    tl.dataset.total = '';
   }
   renderGroups(items);
 }
@@ -136,6 +143,94 @@ function fileCard(it) {
   return card;
 }
 
+// ---------- 浏览模式（按路径看全部文件，解决“52万文件看不到”） ----------
+async function loadStats() {
+  try {
+    const r = await api('/api/stats');
+    const n = (r.files || 0).toLocaleString();
+    $('#stats').textContent = `已索引 ${n} 个文件（按 📁 浏览可逐目录查看全部）`;
+  } catch (_) {
+    $('#stats').textContent = '';
+  }
+}
+
+function enterBrowse(p) {
+  state.mode = 'browse';
+  state.browsePath = p || '/data';
+  $('#timeline').hidden = true;
+  $('#browser').hidden = false;
+  $('#pathbar').hidden = false;
+  loadBrowse(state.browsePath);
+  toast('浏览模式：点击文件夹进入，点击文件看详情');
+}
+function exitBrowse() {
+  state.mode = 'timeline';
+  $('#timeline').hidden = false;
+  $('#browser').hidden = true;
+  $('#pathbar').hidden = true;
+  loadTimeline();
+}
+
+async function loadBrowse(p) {
+  state.browsePath = p;
+  let r;
+  try {
+    r = await api('/api/browse?path=' + encodeURIComponent(p));
+  } catch (e) {
+    $('#browser').innerHTML = `<div class="empty">无法读取该目录：${esc(e.message)}</div>`;
+    return;
+  }
+  renderBreadcrumb(p);
+  renderBrowser(r.items || []);
+}
+
+function renderBreadcrumb(p) {
+  const crumbs = $('#pathCrumbs');
+  crumbs.innerHTML = '';
+  const mk = (label, path) => {
+    const s = document.createElement('span');
+    s.className = 'crumb';
+    s.textContent = label || '/';
+    s.onclick = () => loadBrowse(path || '/');
+    crumbs.appendChild(s);
+  };
+  mk('根', '/');
+  let acc = '';
+  for (const part of p.split('/').filter(Boolean)) {
+    acc += '/' + part;
+    mk(part, acc);
+  }
+}
+
+function renderBrowser(items) {
+  const b = $('#browser');
+  b.innerHTML = '';
+  if (!items.length) {
+    b.innerHTML = '<div class="empty">此目录为空 📂</div>';
+    return;
+  }
+  const grid = document.createElement('div');
+  grid.className = 'tl-grid';
+  for (const it of items) {
+    const card = document.createElement('div');
+    card.className = 'file-card';
+    const icon = ICONS[it.kind] || ICONS.other;
+    const thumb = (it.kind === 'image' || it.kind === 'video')
+      ? `<div class="thumb"><img loading="lazy" src="/api/thumbnail?path=${encodeURIComponent(it.path)}&w=320" onerror="this.parentNode.textContent='${icon}'"></div>`
+      : `<div class="thumb">${icon}</div>`;
+    card.innerHTML =
+      thumb +
+      `<div class="name" title="${esc(it.name)}">${esc(it.name)}</div>` +
+      `<div class="meta">${it.isDir ? '文件夹' : fmtSize(it.size)}</div>`;
+    card.onclick = () => {
+      if (it.isDir) loadBrowse((state.browsePath === '/' ? '' : state.browsePath) + '/' + it.name);
+      else openDetail({ path: it.path, name: it.name, kind: it.kind, isDir: false });
+    };
+    grid.appendChild(card);
+  }
+  b.appendChild(grid);
+}
+
 // ---------- 选择 ----------
 function clearSelection() { state.selected.clear(); }
 function selectOnly(path, card) {
@@ -177,7 +272,7 @@ async function openDetail(it) {
   }
   // 元数据不完整时提示
   if (meta.size == null && !meta.isDir) {
-    html += '<div style="margin-top:8px;color:var(--text-3);font-size:13px">⚠ 部分元信息不可用（文件可能已被移动或删除，或索引未完整）</div>';
+    html += '<div style="margin-top:8px;color:var(--text-1);font-size:13px">⚠ 部分元信息不可用（文件可能已被移动或删除，或索引未完整）</div>';
   }
   body.innerHTML = html;
 
@@ -476,6 +571,11 @@ function toast(msg) {
 // ---------- 事件绑定 ----------
 $('#searchInput').addEventListener('input', (e) => {
   state.filters.q = e.target.value.trim();
+  if (state.mode === 'browse') {
+    // 在浏览态输入搜索 → 切回时间线视图显示搜索结果
+    exitBrowse();
+    return;
+  }
   clearTimeout(window._st);
   window._st = setTimeout(loadTimeline, 300);
 });
@@ -486,6 +586,12 @@ $('#toolbar').addEventListener('click', (e) => {
 $('#undoBtn').onclick = () => doAction('undo');
 $('#redoBtn').onclick = () => doAction('redo');
 $('#detailClose').onclick = () => ($('#detail').hidden = true);
+
+// ★ 浏览模式开关
+$('#browseBtn').onclick = () => {
+  if (state.mode === 'browse') exitBrowse();
+  else enterBrowse(state.browsePath || '/data');
+};
 
 // ★ 筛选按钮：切换内联筛选栏（不再打开 modal）
 $('#filterBtn').onclick = () => toggleFilterBar();
@@ -504,4 +610,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ---------- 启动 ----------
+loadStats();
+setInterval(loadStats, 15000); // 索引进行中时实时反映进度
 loadTimeline();

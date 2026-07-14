@@ -106,7 +106,9 @@ app.get('/about', (req, res) => res.sendFile(path.join(__dirname, 'public', 'abo
 
 // ---------- 浏览 / 时间轴 / 搜索 ----------
 app.get('/api/browse', asyncH(async (req, res) => {
-  const dir = fsops.resolveSafe(req.query.path || '.');
+  const p = req.query.path || '/';
+  // '/' 解析为 ROOT（避免 path.resolve(ROOT,'/') 越界抛 EOUTSIDE）
+  const dir = p === '/' ? cfg.ROOT : fsops.resolveSafe(p);
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const out = [];
   for (const e of entries) {
@@ -130,16 +132,22 @@ app.get('/api/timeline', asyncH(async (req, res) => {
 
 app.get('/api/search', asyncH(async (req, res) => {
   const q = req.query;
-  const rows = db.search({
+  const result = db.search({
     text: q.q,
     type: q.type || 'all',
     minSize: q.minSize ? +q.minSize : null,
     maxSize: q.maxSize ? +q.maxSize : null,
     from: q.from ? +q.from : null,
     to: q.to ? +q.to : null,
+    content: q.content === '1' || q.content === 'true',
     limit: q.limit ? +q.limit : 200,
   });
-  res.json({ ok: true, items: rows });
+  res.json({ ok: true, items: result.rows, total: result.total });
+}));
+
+// 已索引文件数（让用户确认“文件都被识别到了”）
+app.get('/api/stats', asyncH(async (req, res) => {
+  res.json({ ok: true, files: db.count(), dirs: -1 });
 }));
 
 app.get('/api/file', asyncH(async (req, res) => {

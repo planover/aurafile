@@ -94,17 +94,36 @@ function timeline({ from = 0, to = Date.now() + 1e9, limit = 500, offset = 0 } =
     .all(from, to, limit, offset);
 }
 
-function search({ text, type, minSize, maxSize, from, to, limit = 200, offset = 0 }) {
+// 转义 LIKE 通配符，避免用户输入的 % 或 _ 被当成通配
+function escapeLike(s) {
+  return s.replace(/\\/g, '\\\\').replace(/%/g, '\\%').replace(/_/g, '\\_');
+}
+
+// Everything 式搜索：以「文件名子串匹配」为主（中英文/大小写不敏感，LIKE '%term%'），
+// FTS5 全文内容搜索降级为可选增强（仅显式开启时，且对特殊字符清洗防 SQL 语法错）。
+function search({ text, type, minSize, maxSize, from, to, content = false, limit = 200, offset = 0 }) {
   const d = getDb();
   const params = [];
-  let sql = 'SELECT f.* FROM files f';
   const conds = ['f.mtime >= ?', 'f.mtime <= ?'];
   params.push(from != null ? from : 0, to != null ? to : Date.now() + 1e9);
 
+  let joinFts = false;
   if (text && text.trim()) {
-    sql += ' JOIN fts ON f.path = fts.path';
-    conds.push('fts MATCH ?');
-    params.push(text.trim());
+    const t = text.trim();
+    const parts = [];
+    // 主匹配：文件名子串（支持中文，因为 SQLite LIKE 按字符匹配）
+    parts.push('f.name LIKE ? ESCAPE \'\\\'');
+    params.push('%' + escapeLike(t) + '%');
+    // 可选增强：文件内容全文（FTS5），仅当显式开启；用双引号包成短语查询并剥离引号防注入
+    if (content) {
+      const safe = t.replace(/["*():^]/g, ' ').trim();
+      if (safe) {
+        joinFts = true;
+        parts.push('fts MATCH ?');
+        params.push('"' + safe.replace(/"/g, '') + '"');
+      }
+    }
+    conds.push('(' + parts.join(' OR ') + ')');
   }
   if (type && type !== 'all') {
     conds.push('f.kind = ?');
@@ -118,10 +137,20 @@ function search({ text, type, minSize, maxSize, from, to, limit = 200, offset = 
     conds.push('f.size <= ?');
     params.push(maxSize);
   }
+
+  let sql = 'SELECT f.* FROM files f';
+  if (joinFts) sql += ' LEFT JOIN fts ON f.path = fts.path';
   sql += ' WHERE ' + conds.join(' AND ');
   sql += ' ORDER BY f.mtime DESC LIMIT ? OFFSET ?';
-  params.push(limit, offset);
-  return d.prepare(sql).all(...params);
+  const rows = d.prepare(sql).all(...params, limit, offset);
+
+  // 总数（复用车条件，不含 LIMIT/OFFSET）
+  let totalSql = 'SELECT COUNT(*) AS c FROM files f';
+  if (joinFts) totalSql += ' LEFT JOIN fts ON f.path = fts.path';
+  totalSql += ' WHERE ' + conds.join(' AND ');
+  const total = d.prepare(totalSql).get(...params).c;
+
+  return { rows, total };
 }
 
 function count() {

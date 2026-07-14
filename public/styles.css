@@ -329,3 +329,27 @@ body {
   position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
   color: rgba(255, 255, 255, 0.5); font-size: 12px; pointer-events: none;
 }
+
+/* ---------- 浏览模式 / 统计 / 搜索结果头（v0.1.15） ---------- */
+.pathbar {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  padding: 8px 16px; font-size: 13px; color: var(--text-1);
+  background: var(--bg-0); border-bottom: 1px solid var(--line);
+}
+.pathbar-label { color: var(--text-1); }
+.crumb {
+  cursor: pointer; padding: 2px 6px; border-radius: var(--r-sm);
+  color: var(--accent); transition: background 0.15s;
+}
+.crumb:hover { background: var(--accent-soft); }
+.crumb + .crumb::before { content: ' / '; color: var(--text-1); margin: 0 2px; }
+.stats {
+  padding: 6px 16px; font-size: 12px; color: var(--text-1);
+  border-bottom: 1px solid var(--line);
+}
+.result-head {
+  padding: 10px 16px; font-size: 13px; color: var(--text-1);
+  background: var(--bg-0); position: sticky; top: 0; z-index: 2;
+}
+.browser { padding: 16px; min-height: 200px; }
+

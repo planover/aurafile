@@ -20,11 +20,19 @@
       </div>
 
       <div class="top-actions">
+        <button id="browseBtn" class="icon-btn" title="浏览目录（按路径查看所有文件）">📁</button>
         <button id="undoBtn" class="icon-btn" title="撤销 (Ctrl+Z)">↶</button>
         <button id="redoBtn" class="icon-btn" title="重做 (Ctrl+Y)">↷</button>
         <button id="aboutBtn" class="icon-btn" title="关于">ℹ</button>
       </div>
     </header>
+
+    <!-- ★ 浏览模式：面包屑路径栏（替代无限时间轴，直接看全部文件）★ -->
+    <div id="pathbar" class="pathbar" hidden>
+      <span class="pathbar-label">浏览：</span>
+      <span id="pathCrumbs"></span>
+    </div>
+    <div id="stats" class="stats"></div>
 
     <!-- ★ 内联筛选栏（替代 filterModal，零 modal，纯文档流）★ -->
     <div id="filterBar" class="filter-bar">
@@ -77,6 +85,7 @@
     </section>
 
     <main id="timeline" class="timeline"></main>
+    <main id="browser" class="browser" hidden></main>
 
     <aside id="detail" class="detail-panel" hidden>
       <button class="detail-close" id="detailClose">×</button>
