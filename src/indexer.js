@@ -140,7 +140,18 @@ async function initialScan() {
     let entries;
     try {
       entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch (_) {
+    } catch (err) {
+      // 权限不足等错误不应阻塞整个扫描，但必须可追踪（v0.1.18：原 catch (_) 静默吞掉，
+      // 导致 99.97% 漏扫时管理员完全无感知）。按错误类型分类告警，便于定位为何索引量骤降。
+      if (err.code === 'EACCES') {
+        console.warn(`[Aurafile] 索引跳过（权限不足）：${dir}`);
+      } else if (err.code === 'ENOENT') {
+        console.warn(`[Aurafile] 索引跳过（路径不存在）：${dir}`);
+      } else if (err.code === 'ELOOP') {
+        console.warn(`[Aurafile] 索引跳过（符号链环路）：${dir}`);
+      } else {
+        console.warn(`[Aurafile] 索引跳过（${err.code || '未知错误'}）：${dir}`);
+      }
       return;
     }
     for (const e of entries) {

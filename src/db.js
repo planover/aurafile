@@ -3,6 +3,9 @@ const path = require('path');
 const fs = require('fs-extra');
 const Database = require('better-sqlite3');
 const cfg = require('./config');
+// v0.1.18：跨版本升级检测。以 package.json 的 version 为权威版本源，
+// 发版门神 bump 版本号后，旧库记录落后于新版本即触发全量重建提示。
+const APP_VERSION = require('../package.json').version;
 
 let db;
 
@@ -37,6 +40,12 @@ function init() {
       content,
       tokenize = 'unicode61'
     );
+
+    -- v0.1.18：元数据表，记录索引库的 schema/应用版本，用于跨版本升级检测
+    CREATE TABLE IF NOT EXISTS meta (
+      key   TEXT PRIMARY KEY,
+      value TEXT
+    );
   `);
   // v0.1.16：目录名可搜索。兼容旧库——若 files 表缺 isDir 列则补齐（ALTER 不破坏已有数据）。
   // 新库已在 CREATE 中加入该列；此处仅对升级用户生效。
@@ -46,6 +55,34 @@ function init() {
     // 旧库曾把目录以 kind='folder' 入库但未标 isDir，补齐标记使其可被搜索
     db.exec("UPDATE files SET isDir = 1 WHERE kind = 'folder'");
   }
+  // v0.1.18：版本/旧库检测。跨版本升级、或旧库无版本标记（老用户从 0.1.17 及之前升级）时，
+  // 索引数据可能来自旧的权限/旧 schema，可能包含残留或漏扫记录，会误导前端 stats。
+  // 打印一次警告，提示管理员到设置清空索引并重启以全量重建；不自动清除（破坏性操作交由用户决定）。
+  const META_KEY = 'schema_version';
+  let storedRow = null;
+  try {
+    storedRow = db.prepare('SELECT value FROM meta WHERE key = ?').get(META_KEY);
+  } catch (_) {
+    storedRow = null; // meta 表极端情况下缺失，降级为无版本记录处理
+  }
+  const existingCount = db.prepare('SELECT COUNT(*) AS c FROM files').get().c;
+  if (!storedRow) {
+    if (existingCount > 0) {
+      console.warn(
+        `[Aurafile] 检测到旧版索引数据库（${existingCount} 条记录，无版本标记）；` +
+        `本次升级修复了权限漏扫问题，建议到设置清空索引并重启以全量重建，避免旧数据干扰。`
+      );
+    }
+  } else if (storedRow.value !== APP_VERSION) {
+    console.warn(
+      `[Aurafile] 索引数据库来自 v${storedRow.value}，当前 v${APP_VERSION}；` +
+      `若搜索结果异常，请到设置清空索引并重启以全量重建。`
+    );
+  }
+  // 记录当前版本，供下次升级时对比
+  db.prepare(
+    'INSERT INTO meta(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value'
+  ).run(META_KEY, APP_VERSION);
   return db;
 }
 
